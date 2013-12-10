@@ -1,5 +1,7 @@
 #!/bin/python
 
+import re
+
 FILE = "/usr/include/X11/Xlib.h" #change the name of file here
 API_SIGNATURE = "extern"  # change the signature; GLAPI in case of gl.h
 SEMI_COLON = ";"
@@ -28,14 +30,75 @@ def load_lines():
   print("#APIs split in multiple lines: " + str(numOfMultiLineAPI))
   return linesList
 
+# Assumption: Each line is of the form 'extern returnType funcName(type1 /* var1 */, type2 /* var2 */...)
 def prune_lines(linesList):
-  return linesList
+  apiList = []
+  for line in linesList:
+    line = re.sub(r'extern\s{1,}', r'', line) # remove the extern keyword
+    line = re.sub(r'/\*', r'', line) # remove the start of a C comment /*
+    line = re.sub(r'\*/', r'', line) # remove the end of a C comment */
+    line = re.sub(r'\s{2,}', r' ', line)  # remove multiple spaces
+    apiList.append(line)
+  return apiList
 
-def print_list(apiList):
+# Assumption: Each line is of the form 'extern returnType funcName(type1 /* var1 */, type2 /* var2 */...)
+def tokenize_func_prototype(line):
+  def getIdentifier(line):
+    res = re.findall(r'\w+', line)
+    if not res or len(res) < 2:
+      return ("", None)
+    startPos = re.search(res[-1]+'$', line).start() # FIXME: This is terrible.
+    return (res[-1], startPos)
+
+  funcName = ""
+  returnType = ""
+  args = []
+  argTypes = []
+
+  tokens = line.split(')')[0].split('(')
+  (funcName, funcNameStart) = getIdentifier(tokens[0].strip())
+  returnType = tokens[0][:funcNameStart].strip()
+  argsList = tokens[1].split(',')
+  for arg in argsList:
+    (argName, argStart) = getIdentifier(arg.strip())
+    argType = arg[:argStart]
+    if not argType:
+      assert(False)
+    args.append(argName.strip())
+    argTypes.append(argType.strip())
+
+  return (returnType, funcName, argTypes, args)
+
+def print_generated_code(apiList):
+  # We cannot handle variable arguments, pre-processor macros, and func pointers
+  #  for now.
+  def is_special_case(argTypes):
+    if ("..." in argTypes) or ("#" in argTypes) or ("(" in argTypes):
+      return True
+    return False
+
   for line in apiList:
-    print(line.strip())
+    funcPrototype = line.strip().split(';')[0]
+    (returnType, funcName, argTypes, args) = tokenize_func_prototype(funcPrototype)
+    print("#define _real_" + funcName + "    NEXT_FNC(" + funcName + ")")
+  for line in apiList:
+    funcPrototype = line.strip().split(';')[0]
+    (returnType, funcName, argTypes, args) = tokenize_func_prototype(funcPrototype)
+    funcCallLine = "  "
+    if is_special_case(argTypes) or is_special_case(args):
+      print("/*")
+    if not ("void" == returnType):
+      funcCallLine += "return "
+    funcCallLine += "_real_" + funcName + "(" + ",".join(args) + ");"
+    print("\n" + funcPrototype + " {");
+    print("  DPRINT(\""+ funcName +"()\\n\");");
+    print(funcCallLine)
+    print("}")
+    if is_special_case(argTypes) or is_special_case(args):
+      print("*/")
+
 
 def main():
-  print_list(prune_lines(load_lines()))
+  print_generated_code(prune_lines(load_lines()))
 
 main()
