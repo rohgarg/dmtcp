@@ -400,7 +400,7 @@ int main ( int argc, char** argv )
   if (getenv("DISPLAY") != NULL) {
     setenv("ORIG_DISPLAY", getenv("DISPLAY"), 1);
     // UNSET DISPLAY environment variable.
-    unsetenv("DISPLAY");
+    // unsetenv("DISPLAY");
   }
 
 // FIXME:  Unify this code with code prior to execvp in execwrappers.cpp
