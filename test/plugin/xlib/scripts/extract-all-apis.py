@@ -73,29 +73,36 @@ def print_generated_code(apiList):
   # We cannot handle variable arguments, pre-processor macros, and func pointers
   #  for now.
   def is_special_case(argTypes):
-    if ("..." in argTypes) or ("#" in argTypes) or ("(" in argTypes):
+    if ("..." in argTypes):
       return True
     return False
+
+  def post_process(funcPrototype):
+    funcPrototype = re.sub(r'#if NeedWidePrototypes', r'\n#if NeedWidePrototypes\n', funcPrototype)
+    funcPrototype = re.sub(r'#ifdef ISC', r'\n#ifdef ISC\n', funcPrototype)
+    funcPrototype = re.sub(r'#else', r'\n#else\n', funcPrototype)
+    funcPrototype = re.sub(r'#endif', r'\n#endif\n', funcPrototype)
+    return funcPrototype
 
   for line in apiList:
     funcPrototype = line.strip().split(';')[0]
     (returnType, funcName, argTypes, args) = tokenize_func_prototype(funcPrototype)
     print("#define _real_" + funcName + "    NEXT_FNC(" + funcName + ")")
   for line in apiList:
-    funcPrototype = line.strip().split(';')[0]
+    funcPrototype = line.strip().split('_X_SENTINEL')[0].split(';')[0]
     (returnType, funcName, argTypes, args) = tokenize_func_prototype(funcPrototype)
     funcCallLine = "  "
-    if is_special_case(argTypes) or is_special_case(args):
-      print("/*")
     if not ("void" == returnType):
       funcCallLine += "return "
-    funcCallLine += "_real_" + funcName + "(" + ",".join(args) + ");"
+    if is_special_case(argTypes):
+      funcCallLine += "_real_" + funcName + "(" + ",".join(args) + "NULL);"
+    else:
+      funcCallLine += "_real_" + funcName + "(" + ",".join(args) + ");"
+    funcPrototype = post_process(funcPrototype)
     print("\n" + funcPrototype + " {");
-    print("  DPRINT(\""+ funcName +"()\\n\");");
+    print("  DPRINTF(\""+ funcName +"()\\n\");");
     print(funcCallLine)
     print("}")
-    if is_special_case(argTypes) or is_special_case(args):
-      print("*/")
 
 
 def main():
