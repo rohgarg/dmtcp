@@ -1,9 +1,27 @@
-DMTCP Plugin for X Client Applications
-------------------------------------------
+# DMTCP Plugin for X Client Applications
 
 ## Introduction
 
 ## X Window System Architecture
+
+                                 +---------+
+                                 |  App2   |
+         +------+    +------+    +---------+
+         | App1 |    |  WM  |    | Toolkit |
+         +------+    +------+    +---------+
+         | Xlib |    | Xlib |    |   Xlib  |
+         +------+    +------+    +---------+
+            ^           ^             ^
+            |           |             |
+     ===============X Protocol===================
+                        |
+                        v
+        +-------------------------------------+
+        |                 X Server            |
+        +-------------------------------------+
+        |             Device Drivers          |
+        +-------------------------------------+
+
 
 ## Design of the plugin
 
