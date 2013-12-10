@@ -9,6 +9,10 @@ DMTCP Plugin for X Client Applications
 
 ## Build steps
 
+Use DEBUGGING=1 flag for a debug build.
+
+    make [DEBUGGING=1] [check]
+
 ### Prerequisites
 
 ## References
