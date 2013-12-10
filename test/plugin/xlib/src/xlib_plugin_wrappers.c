@@ -1749,20 +1749,17 @@ Status XCloseOM(XOM om ) {
   DPRINTF("XCloseOM()\n");
   return _real_XCloseOM(om);
 }
-/*
 
-char *XSetOMValues(XOM om ,...) _X_SENTINEL(0) {
+char *XSetOMValues(XOM om, ...) {
   DPRINTF("XSetOMValues()\n");
-  return _real_XSetOMValues(om,);
+  return _real_XSetOMValues(om, NULL);
 }
-*/
-/*
 
-char *XGetOMValues(XOM om ,...) _X_SENTINEL(0) {
+
+char *XGetOMValues(XOM om ,...) {
   DPRINTF("XGetOMValues()\n");
-  return _real_XGetOMValues(om,);
+  return _real_XGetOMValues(om,NULL);
 }
-*/
 
 Display *XDisplayOfOM(XOM om ) {
   DPRINTF("XDisplayOfOM()\n");
@@ -1773,13 +1770,11 @@ char *XLocaleOfOM(XOM om ) {
   DPRINTF("XLocaleOfOM()\n");
   return _real_XLocaleOfOM(om);
 }
-/*
 
-XOC XCreateOC(XOM om ,...) _X_SENTINEL(0) {
+XOC XCreateOC(XOM om ,...) {
   DPRINTF("XCreateOC()\n");
-  return _real_XCreateOC(om,);
+  return _real_XCreateOC(om,NULL);
 }
-*/
 
 void XDestroyOC(XOC oc ) {
   DPRINTF("XDestroyOC()\n");
@@ -1790,20 +1785,16 @@ XOM XOMOfOC(XOC oc ) {
   DPRINTF("XOMOfOC()\n");
   return _real_XOMOfOC(oc);
 }
-/*
 
-char *XSetOCValues(XOC oc ,...) _X_SENTINEL(0) {
+char *XSetOCValues(XOC oc ,...) {
   DPRINTF("XSetOCValues()\n");
-  return _real_XSetOCValues(oc,);
+  return _real_XSetOCValues(oc,NULL);
 }
-*/
-/*
 
-char *XGetOCValues(XOC oc ,...) _X_SENTINEL(0) {
+char *XGetOCValues(XOC oc ,...) {
   DPRINTF("XGetOCValues()\n");
-  return _real_XGetOCValues(oc,);
+  return _real_XGetOCValues(oc,NULL);
 }
-*/
 
 XFontSet XCreateFontSet(Display* display ,_Xconst char* base_font_name_list ,char*** missing_charset_list ,int* missing_charset_count ,char** def_string ) {
   DPRINTF("XCreateFontSet()\n");
@@ -1949,20 +1940,16 @@ Status XCloseIM(XIM im ) {
   DPRINTF("XCloseIM()\n");
   return _real_XCloseIM(im);
 }
-/*
 
-char *XGetIMValues(XIM im , ...) _X_SENTINEL(0) {
+char *XGetIMValues(XIM im , ...) {
   DPRINTF("XGetIMValues()\n");
-  return _real_XGetIMValues(im,);
+  return _real_XGetIMValues(im,NULL);
 }
-*/
-/*
 
-char *XSetIMValues(XIM im , ...) _X_SENTINEL(0) {
+char *XSetIMValues(XIM im , ...) {
   DPRINTF("XSetIMValues()\n");
-  return _real_XSetIMValues(im,);
+  return _real_XSetIMValues(im,NULL);
 }
-*/
 
 Display *XDisplayOfIM(XIM im ) {
   DPRINTF("XDisplayOfIM()\n");
@@ -1973,13 +1960,11 @@ char *XLocaleOfIM(XIM im) {
   DPRINTF("XLocaleOfIM()\n");
   return _real_XLocaleOfIM(im);
 }
-/*
 
-XIC XCreateIC(XIM im , ...) _X_SENTINEL(0) {
+XIC XCreateIC(XIM im , ...) {
   DPRINTF("XCreateIC()\n");
-  return _real_XCreateIC(im,);
+  return _real_XCreateIC(im,NULL);
 }
-*/
 
 void XDestroyIC(XIC ic ) {
   DPRINTF("XDestroyIC()\n");
@@ -2010,20 +1995,16 @@ char *Xutf8ResetIC(XIC ic ) {
   DPRINTF("Xutf8ResetIC()\n");
   return _real_Xutf8ResetIC(ic);
 }
-/*
 
-char *XSetICValues(XIC ic , ...) _X_SENTINEL(0) {
+char *XSetICValues(XIC ic , ...) {
   DPRINTF("XSetICValues()\n");
-  return _real_XSetICValues(ic,);
+  return _real_XSetICValues(ic,NULL);
 }
-*/
-/*
 
-char *XGetICValues(XIC ic , ...) _X_SENTINEL(0) {
+char *XGetICValues(XIC ic , ...) {
   DPRINTF("XGetICValues()\n");
-  return _real_XGetICValues(ic,);
+  return _real_XGetICValues(ic,NULL);
 }
-*/
 
 XIM XIMOfIC(XIC ic ) {
   DPRINTF("XIMOfIC()\n");
@@ -2049,13 +2030,11 @@ int Xutf8LookupString(XIC ic ,XKeyPressedEvent* event ,char* buffer_return ,int 
   DPRINTF("Xutf8LookupString()\n");
   return _real_Xutf8LookupString(ic,event,buffer_return,bytes_buffer,keysym_return,status_return);
 }
-/*
 
-XVaNestedList XVaCreateNestedList(int unused, ...) _X_SENTINEL(0) {
+XVaNestedList XVaCreateNestedList(int unused, ...) {
   DPRINTF("XVaCreateNestedList()\n");
-  return _real_XVaCreateNestedList(unused,);
+  return _real_XVaCreateNestedList(unused,NULL);
 }
-*/
 
 Bool XRegisterIMInstantiateCallback(Display* dpy ,struct _XrmHashBucketRec* rdb ,char* res_name ,char* res_class ,XIDProc callback ,XPointer client_data ) {
   DPRINTF("XRegisterIMInstantiateCallback()\n");
