@@ -3,6 +3,7 @@
 import re
 
 FILE = "/usr/include/X11/Xlib.h" #change the name of file here
+FILE = "/usr/include/GL/glx.h" #change the name of file here
 API_SIGNATURE = "extern"  # change the signature; GLAPI in case of gl.h
 SEMI_COLON = ";"
 OPEN_PAREN = "("
@@ -38,7 +39,8 @@ def prune_lines(linesList):
     line = re.sub(r'/\*', r'', line) # remove the start of a C comment /*
     line = re.sub(r'\*/', r'', line) # remove the end of a C comment */
     line = re.sub(r'\s{2,}', r' ', line)  # remove multiple spaces
-    apiList.append(line)
+    if not ("ARB" in line and "PROC" in line):
+      apiList.append(line)
   return apiList
 
 # Assumption: Each line is of the form 'extern returnType funcName(type1 /* var1 */, type2 /* var2 */...)
@@ -47,7 +49,10 @@ def tokenize_func_prototype(line):
     res = re.findall(r'\w+', line)
     if not res or len(res) < 2:
       return ("", None)
-    startPos = re.search(res[-1]+'$', line).start() # FIXME: This is terrible.
+    tmp = re.search(res[-1]+'$', line) # FIXME: This is terrible.
+    if not tmp:
+      return ("", None)
+    startPos = tmp.start()
     return (res[-1], startPos)
 
   funcName = ""
@@ -61,7 +66,7 @@ def tokenize_func_prototype(line):
   argsList = tokens[1].split(',')
   for arg in argsList:
     (argName, argStart) = getIdentifier(arg.strip())
-    argType = arg[:argStart]
+    argType = arg.strip()[:argStart]
     if not argType:
       assert(False)
     args.append(argName.strip())
