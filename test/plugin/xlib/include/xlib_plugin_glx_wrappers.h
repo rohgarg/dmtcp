@@ -1,0 +1,65 @@
+#ifndef _XLIB_PLUGIN_GLX_WRAPPERS_H_
+#define _XLIB_PLUGIN_GLX_WRAPPERS_H_
+
+#include "dmtcpplugin.h"
+#include "xlib_plugin_debug.h"
+#include <GL/glx.h>
+
+/* Auto generated code starts below */
+
+#define _real_glXChooseVisual    NEXT_FNC(glXChooseVisual)
+#define _real_glXCreateContext    NEXT_FNC(glXCreateContext)
+#define _real_glXDestroyContext    NEXT_FNC(glXDestroyContext)
+#define _real_glXMakeCurrent    NEXT_FNC(glXMakeCurrent)
+#define _real_glXCopyContext    NEXT_FNC(glXCopyContext)
+#define _real_glXSwapBuffers    NEXT_FNC(glXSwapBuffers)
+#define _real_glXCreateGLXPixmap    NEXT_FNC(glXCreateGLXPixmap)
+#define _real_glXDestroyGLXPixmap    NEXT_FNC(glXDestroyGLXPixmap)
+#define _real_glXQueryExtension    NEXT_FNC(glXQueryExtension)
+#define _real_glXQueryVersion    NEXT_FNC(glXQueryVersion)
+#define _real_glXIsDirect    NEXT_FNC(glXIsDirect)
+#define _real_glXGetConfig    NEXT_FNC(glXGetConfig)
+#define _real_glXGetCurrentContext    NEXT_FNC(glXGetCurrentContext)
+#define _real_glXGetCurrentDrawable    NEXT_FNC(glXGetCurrentDrawable)
+#define _real_glXWaitGL    NEXT_FNC(glXWaitGL)
+#define _real_glXWaitX    NEXT_FNC(glXWaitX)
+#define _real_glXUseXFont    NEXT_FNC(glXUseXFont)
+#define _real_glXQueryExtensionsString    NEXT_FNC(glXQueryExtensionsString)
+#define _real_glXQueryServerString    NEXT_FNC(glXQueryServerString)
+#define _real_glXGetClientString    NEXT_FNC(glXGetClientString)
+#define _real_glXGetCurrentDisplay    NEXT_FNC(glXGetCurrentDisplay)
+#define _real_glXChooseFBConfig    NEXT_FNC(glXChooseFBConfig)
+#define _real_glXGetFBConfigAttrib    NEXT_FNC(glXGetFBConfigAttrib)
+#define _real_glXGetFBConfigs    NEXT_FNC(glXGetFBConfigs)
+#define _real_glXGetVisualFromFBConfig    NEXT_FNC(glXGetVisualFromFBConfig)
+#define _real_glXCreateWindow    NEXT_FNC(glXCreateWindow)
+#define _real_glXDestroyWindow    NEXT_FNC(glXDestroyWindow)
+#define _real_glXCreatePixmap    NEXT_FNC(glXCreatePixmap)
+#define _real_glXDestroyPixmap    NEXT_FNC(glXDestroyPixmap)
+#define _real_glXCreatePbuffer    NEXT_FNC(glXCreatePbuffer)
+#define _real_glXDestroyPbuffer    NEXT_FNC(glXDestroyPbuffer)
+#define _real_glXQueryDrawable    NEXT_FNC(glXQueryDrawable)
+#define _real_glXCreateNewContext    NEXT_FNC(glXCreateNewContext)
+#define _real_glXMakeContextCurrent    NEXT_FNC(glXMakeContextCurrent)
+#define _real_glXGetCurrentReadDrawable    NEXT_FNC(glXGetCurrentReadDrawable)
+#define _real_glXQueryContext    NEXT_FNC(glXQueryContext)
+#define _real_glXSelectEvent    NEXT_FNC(glXSelectEvent)
+#define _real_glXGetSelectedEvent    NEXT_FNC(glXGetSelectedEvent)
+#define _real_glXGetProcAddressARB    NEXT_FNC(glXGetProcAddressARB)
+#define _real_glXGetProcAddress    NEXT_FNC(glXGetProcAddress)
+#define _real_glXAllocateMemoryNV    NEXT_FNC(glXAllocateMemoryNV)
+#define _real_glXFreeMemoryNV    NEXT_FNC(glXFreeMemoryNV)
+#define _real_glXBindTexImageARB    NEXT_FNC(glXBindTexImageARB)
+#define _real_glXReleaseTexImageARB    NEXT_FNC(glXReleaseTexImageARB)
+#define _real_glXDrawableAttribARB    NEXT_FNC(glXDrawableAttribARB)
+#define _real_glXGetFrameUsageMESA    NEXT_FNC(glXGetFrameUsageMESA)
+#define _real_glXBeginFrameTrackingMESA    NEXT_FNC(glXBeginFrameTrackingMESA)
+#define _real_glXEndFrameTrackingMESA    NEXT_FNC(glXEndFrameTrackingMESA)
+#define _real_glXQueryFrameTrackingMESA    NEXT_FNC(glXQueryFrameTrackingMESA)
+#define _real_glXSwapIntervalMESA    NEXT_FNC(glXSwapIntervalMESA)
+#define _real_glXGetSwapIntervalMESA    NEXT_FNC(glXGetSwapIntervalMESA)
+#define _real_glXBindTexImageEXT    NEXT_FNC(glXBindTexImageEXT)
+#define _real_glXReleaseTexImageEXT    NEXT_FNC(glXReleaseTexImageEXT)
+/* Auto generated code ends */
+
+#endif
