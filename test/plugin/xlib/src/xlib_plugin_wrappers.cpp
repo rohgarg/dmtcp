@@ -1,5 +1,18 @@
 #include "xlib_plugin_wrappers.h"
+#include "xlib_plugin_virtualization.h"
 
+#define VIRTUALIZE 0
+
+/* This is just a place-holder; the real purpose is for the python script to
+ * generate code to virtualize different ids*/
+#if VIRTUALIZE
+ virtualization_func=virtual_to_real_display_pointer;
+ virtualization_id=Display*;
+ virtualization_func=virtual_to_real_window;
+ virtualization_id=Window;
+ virtualization_func=virtual_to_real_gc;
+ virtualization_id=GC;
+#endif
 /* Auto generated code starts below */
 extern "C" XFontStruct *XLoadQueryFont(Display* display ,_Xconst char* name ) {
   DPRINTF("XLoadQueryFont()\n");
@@ -71,7 +84,9 @@ extern "C" XImage *XGetSubImage(Display* display ,Drawable d ,int x ,int y ,unsi
 extern "C" Display *XOpenDisplay(_Xconst char* display_name ) {
   DPRINTF("XOpenDisplay()\n");
   Display *dp =  _real_XOpenDisplay(display_name);
-  return dp;
+  XLIB_VIRT_CALL_FUNC.save_display(dp);
+  XLIB_VIRT_SAVE_FUNC_CALL("XOpenDisplay()");
+  return XLIB_VIRT_CALL_FUNC.get_virtual_dp();
 }
 
 extern "C" void XrmInitialize(void) {
