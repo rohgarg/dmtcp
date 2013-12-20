@@ -6,7 +6,8 @@
 #include <vector>
 #include <string>
 
-#define SAVE_FUNC_CALL(msg) XlibVirt::GetInstance().save_func_and_params(msg)
+#define XLIB_VIRT_CALL_FUNC XlibVirt::GetInstance()
+#define XLIB_VIRT_SAVE_FUNC_CALL(msg) XLIB_VIRT_CALL_FUNC.save_func_and_params(msg)
 
 using namespace std;
 
