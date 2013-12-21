@@ -81,6 +81,28 @@ extern "C" XImage *XGetSubImage(Display* display ,Drawable d ,int x ,int y ,unsi
   return _real_XGetSubImage(display,d,x,y,width,height,plane_mask,format,dest_image,dest_x,dest_y);
 }
 
+#ifdef PYTHON_TEST
+
+void *g_libHandle = NULL;
+
+void *dlopen(const char *filename, int flag)
+{
+  DPRINTF("dlopen(filename=%s, flag=%d)\n", filename, flag);
+  if (filename)
+  {
+    static string cpp_fileName = filename;
+    if (cpp_fileName.find("pymol")!=string::npos)
+    {
+      DPRINTF("Saving the _cmd.so handle.\n");
+      /* NOTE: This uses the old definition of NEXT_FNC */
+      g_libHandle = _real_dlopen(filename, flag);
+      return g_libHandle;
+    }
+  }
+  return _real_dlopen(filename, flag);
+}
+#endif
+
 extern "C" Display *XOpenDisplay(_Xconst char* display_name ) {
   DPRINTF("XOpenDisplay()\n");
   Display *dp =  _real_XOpenDisplay(display_name);

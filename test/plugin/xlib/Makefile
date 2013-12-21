@@ -26,9 +26,16 @@ CXXOBJECTS=$(patsubst ${PLUGIN_SRC_DIR}/%.cpp, ${PLUGIN_OBJ_DIR}/%.o, ${CXXSOURC
 X11_INCLUDES=$(shell pkg-config --cflags x11)
 #X11_LIBS=$(shell pkg-config --libs x11)
 
+# Debugging is enabled by default
+DEBUG_FLAGS=
+
 DEBUGGING=1
 ifdef DEBUGGING
-  DEBUG_FLAGS=-g -O0 -DXLIB_PLUGIN_DEBUG
+  DEBUG_FLAGS += -g -O0 -DXLIB_PLUGIN_DEBUG
+endif
+
+ifdef PYTHON_TEST
+  DEBUG_FLAGS += -DPYTHON_TEST
 endif
 
 ifdef PLUGIN_ISOLATED_RUN

@@ -5,6 +5,23 @@
 #include "xlib_plugin_debug.h"
 #include <X11/Xlib.h>
 
+/* Special handling for pymol and other python based visualization software */
+#ifdef PYTHON_TEST
+/* Here we use the old definition of NEXT_FNC*/
+#define _real_dlopen NEXT_FNC(dlopen) 
+/* A global handle to the library */
+extern void *g_libHandle; 
+/* Next, we remove the old definition of NEXT_FNC... */
+#undef NEXT_FNC
+/* ... and define it afresh */
+#define NEXT_FNC(func) \
+  ({ \
+    static __typeof__ (&func) l_fncHandle = NULL;\
+    l_fncHandle = (__typeof__ (&func)) dlsym(g_libHandle, #func);\
+    l_fncHandle;\
+   })
+#endif
+
 /* Auto generated code starts below */
 #define _real_XLoadQueryFont    NEXT_FNC(XLoadQueryFont)
 #define _real_XQueryFont    NEXT_FNC(XQueryFont)
