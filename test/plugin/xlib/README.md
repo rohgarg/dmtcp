@@ -29,7 +29,7 @@
 
 Use DEBUGGING=1 flag for a debug build.
 
-    make [DEBUGGING=1] [check]
+    make [DEBUGGING=1] [PYTHON_TEST=1] [PLUGIN_ISOLATED_RUN=1] [check[-*]]
 
 ### Prerequisites
 
