@@ -15,4 +15,17 @@
     do { } while (0)
 #endif
 
+#ifdef PLUGIN_ISOLATED_RUN
+ #undef NEXT_FNC
+ #define NEXT_FNC(func)                                                      \
+   ({                                                                        \
+      static __typeof__(&func) _real_##func = (__typeof__(&func)) -1;        \
+      if (_real_##func == (__typeof__(&func)) -1) {                          \
+        __typeof__(&dlsym) dlsym_fnptr;                                      \
+        dlsym_fnptr = &dlsym;                                                \
+        _real_##func = (__typeof__(&func)) (*dlsym_fnptr) (RTLD_NEXT, #func);\
+      }                                                                      \
+    _real_##func;})  
+#endif
+
 #endif
