@@ -15,7 +15,7 @@
 #include <arpa/inet.h>
 #include <queue>
 
-#include "dmtcpplugin.h"
+#include "dmtcp.h"
 #include "dmtcpalloc.h"
 #include "util.h"
 #include "jsocket.h"
@@ -39,6 +39,7 @@ vector<int> socks;
 map<uint32_t, IB_QP*> queuePairs;
 
 map<struct ibv_cq*, vector<struct ibv_wc> > compQueue;
+map<struct ibv_cq*, sem_t *> compQueueSema;
 
 sem_t sem_queue;
 
@@ -114,13 +115,13 @@ static void *recvThread(void *arg)
   fd_set fds;
   int maxFd;
   size_t i;
-  struct timeval timeout = {1, 0};
 
   while (isVirtIB == 0) {
     sleep(1);
   }
 
   while (1) {
+    struct timeval timeout = {1, 0};
     maxFd = -1;
     FD_ZERO ( &fds );
 
@@ -129,7 +130,8 @@ static void *recvThread(void *arg)
       maxFd = std::max(maxFd, socks[i]);
     }
 
-    if (maxFd <= 0) {
+    if (maxFd < 0) {
+      sleep(1);
       continue;
     }
 
@@ -177,12 +179,12 @@ void IB2TCP::init()
     JASSERT(pthread_create(&sendTh, NULL, sendThread, NULL) == 0);
     JASSERT(pthread_create(&recvTh, NULL, recvThread, NULL) == 0);
   }
+  sem_init(&sem_queue, 0, 0);
 }
 
 void IB2TCP::postRestart()
 {
   openListenSocket();
-  sem_init(&sem_queue, 0, 0);
 }
 
 void IB2TCP::registerNSData()
@@ -337,6 +339,13 @@ void IB2TCP::doRecvMsg(int fd)
   struct ibv_cq *cq = ibqp->recv_cq;
   do_lock();
   compQueue[cq].push_back(wc);
+  if (compQueueSema.find(cq) == compQueueSema.end()) {
+    sem_t *sem = (sem_t*) malloc(sizeof( sem_t));
+    JASSERT(sem != NULL);
+    sem_init(sem, 0, 0);
+    compQueueSema[cq] = sem;
+  }
+  sem_post(compQueueSema[cq]);
   do_unlock();
 }
 
@@ -384,6 +393,13 @@ void IB2TCP::doSendMsg()
   struct ibv_cq *cq = ibqp->recv_cq;
   do_lock();
   compQueue[cq].push_back(wc);
+  if (compQueueSema.find(cq) == compQueueSema.end()) {
+    sem_t *sem = (sem_t*) malloc(sizeof(sem_t));
+    JASSERT(sem != NULL);
+    sem_init(sem, 0, 0);
+    compQueueSema[cq] = sem;
+  }
+  sem_post(compQueueSema[cq]);
   do_unlock();
 }
 
@@ -471,8 +487,15 @@ int IB2TCP::postSrqRecv(struct ibv_srq *srq, struct ibv_recv_wr *wr,
 
 int IB2TCP::pollCq(struct ibv_cq *cq, int num_entries, struct ibv_wc *wc)
 {
-  do_lock();
   int i;
+  if (compQueueSema.find(cq) == compQueueSema.end()) {
+    sem_t *sem = (sem_t*) malloc(sizeof(sem_t));
+    JASSERT(sem != NULL);
+    sem_init(sem, 0, 0);
+    compQueueSema[cq] = sem;
+  }
+  sem_wait(compQueueSema[cq]);
+  do_lock();
   for (i = 0; i < num_entries && compQueue[cq].size() > 0; i++) {
     struct ibv_wc w = compQueue[cq].front();
     compQueue[cq].erase(compQueue[cq].begin());

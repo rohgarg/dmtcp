@@ -1,17 +1,54 @@
-dmtcp (2.0-1) unstable; urgency=low
+dmtcp (2.3.1-5) unstable; urgency=low
 
-  * New upstream release.
+  * Removed armhf architecture support from dmtcp-dbg as well.
   * Upload sponsored by Yaroslav Halchenko <debian@onerussian.com>
 
- -- Kapil Arya <kapil@ccs.neu.edu>  Mon, 07 Oct 2013 23:41:39 -0400
+ -- Kapil Arya <kapil@ccs.neu.edu>  Sat, 26 Jul 2014 09:58:35 -0400
 
-dmtcp (1.2.8-1) unstable; urgency=low
+dmtcp (2.3.1-4) unstable; urgency=low
 
-  * New upstream release.
-  * Updated debian standards version to 3.9.4.
+  * Removed armel architecture support.
+  * Remove previously added -march=armv7 for ARM builds.
   * Upload sponsored by Yaroslav Halchenko <debian@onerussian.com>
 
- -- Kapil Arya <kapil@ccs.neu.edu>  Fri, 26 Jul 2013 13:08:34 -0400
+ -- Kapil Arya <kapil@ccs.neu.edu>  Fri, 25 Jul 2014 16:19:26 -0400
+
+dmtcp (2.3.1-3) unstable; urgency=low
+
+  * Added armhf architecture support.
+  * Force -march=armv7 for ARM builds.
+  * Upload sponsored by Yaroslav Halchenko <debian@onerussian.com>
+
+ -- Kapil Arya <kapil@ccs.neu.edu>  Thu, 24 Jul 2014 11:50:36 -0400
+
+dmtcp (2.3.1-2) unstable; urgency=low
+
+  * Compilation fix for older ARM CPUs.
+  * Upload sponsored by Yaroslav Halchenko <debian@onerussian.com>
+
+ -- Kapil Arya <kapil@ccs.neu.edu>  Sat, 19 Jul 2014 13:42:49 -0400
+
+dmtcp (2.3.1-1) unstable; urgency=low
+
+  * New upstream release 2.3.1 (closes: #662910).
+  * Remove stale dependency on libmtcp1 (closes: #753764).
+  * Upload sponsored by Yaroslav Halchenko <debian@onerussian.com>
+
+ -- Kapil Arya <kapil@ccs.neu.edu>  Mon, 14 Jul 2014 18:56:41 -0400
+
+dmtcp (2.2-1) unstable; urgency=low
+
+  * New upstream release 2.2.
+  * Changing distribution from experimental to unstable.
+  * Updated debian standards version to 3.9.5.
+  * Removed libmtcp and libdmtcpaware packages.
+  * Run make check in "slow" mode.
+  * Updated copyright file.
+  * Added debian/NEWS file.
+  * Removed some stale files from install procedure.
+  * Upload sponsored by Yaroslav Halchenko <debian@onerussian.com>
+
+ -- Kapil Arya <kapil@ccs.neu.edu>  Sat, 11 Jan 2014 23:47:45 -0500
 
 dmtcp (1.2.7-1) experimental; urgency=low
 

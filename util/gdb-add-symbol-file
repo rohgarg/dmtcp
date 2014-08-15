@@ -16,7 +16,7 @@ test -z "$2" && echo '    ' ... and paste the output of that command into gdb:
 test -z "$2" && echo Hence: '(gdb) add-symbol-file ...'
 test -z "$2" && exit
 
-# processPID=`pgrep -n $1`
+processPID=`pgrep -n $1`
 processPID=$1
 if ! test -e /proc/$processPID; then
   echo Process $processPID does not exist.  Please use existing proces.
@@ -31,7 +31,8 @@ fi
 lib=`cat /proc/$processPID/maps | grep $2 | head -1 | \
 	sed -e 's%[^/]*\(/.*\)%\1%'`
 
-segAddr=`cat /proc/$processPID/maps | grep $lib | grep r-xp | \
+# libdmtcp.so can now have two r-x sections.  Why?
+segAddr=`cat /proc/$processPID/maps | grep $lib | head -1 | grep r-xp | \
 	sed -e 's%^\([0-9a-f]*\).*%0x\1%'`
 segDataAddr=`cat /proc/$processPID/maps | grep $lib | grep rw-p | \
 	sed -e 's%^\([0-9a-f]*\).*%0x\1%'`

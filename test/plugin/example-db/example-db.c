@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "dmtcpplugin.h"
+#include "dmtcp.h"
 
 struct keyPid {
   int key;
@@ -17,7 +17,7 @@ struct keyPid {
 
 void dmtcp_event_hook(DmtcpEvent_t event, DmtcpEventData_t *data)
 {
-  size_t sizeofPid;
+  uint32_t sizeofPid;
 
   /* NOTE:  See warning in plugin/README about calls to printf here. */
   switch (event) {

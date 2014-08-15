@@ -1,9 +1,8 @@
 /*****************************************************************************
- *   Copyright (C) 2008-2013 by Ana-Maria Visan, Kapil Arya, and             *
- *                                                            Gene Cooperman *
+ *   Copyright (C) 2008-2013 Ana-Maria Visan, Kapil Arya, and Gene Cooperman *
  *   amvisan@cs.neu.edu, kapil@cs.neu.edu, and gene@ccs.neu.edu              *
  *                                                                           *
- *   This file is part of the PTRACE plugin of DMTCP (DMTCP:mtcp).           *
+ *  This file is part of the PTRACE plugin of DMTCP (DMTCP:plugin/ptrace).   *
  *                                                                           *
  *  DMTCP:mtcp is free software: you can redistribute it and/or              *
  *  modify it under the terms of the GNU Lesser General Public License as    *
@@ -23,22 +22,17 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <sys/ptrace.h>
 #include <sys/syscall.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 
 #include <linux/version.h>
-// This was needed for:  SUSE LINUX 10.0 (i586) OSS
-#ifndef PTRACE_SETOPTIONS
-# include <sys/ptrace.h>
-#endif
 #include <linux/unistd.h>
 #include <linux/limits.h>
 
 #include "ptrace.h"
 #include "ptraceinfo.h"
-#include "dmtcpplugin.h"
+#include "dmtcp.h"
 #include "util.h"
 #include "jassert.h"
 #include "jfilesystem.h"

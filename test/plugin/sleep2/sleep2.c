@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <sys/time.h>
-#include "dmtcpplugin.h"
+#include "dmtcp.h"
 
 void print_time() {
   struct timeval val;
@@ -15,8 +15,6 @@ void print_time() {
 }
 
 unsigned int sleep(unsigned int seconds) {
-  static unsigned int (*next_fnc)() = NULL; /* Same type signature as sleep */
-
   printf("(sleep2: "); print_time(); printf(" ... ");
   unsigned int result = NEXT_FNC(sleep)(seconds);
   print_time(); printf(") ");
