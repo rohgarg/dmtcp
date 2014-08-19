@@ -1,5 +1,9 @@
 #include "xlib_plugin_wrappers.h"
 #include "xlib_plugin_virtualization.h"
+#include <sstream>
+#include <assert.h>
+#include <cstring>
+#include <X11/Xresource.h>
 
 #define VIRTUALIZE 0
 
@@ -40,9 +44,15 @@ extern "C" XModifierKeymap *XDeleteModifiermapEntry(XModifierKeymap* modmap ,
   return _real_XDeleteModifiermapEntry(modmap,keycode_entry,modifier);
 }
 
-extern "C" XModifierKeymap	*XGetModifierMapping(Display* display ) {
+extern "C" XModifierKeymap *XGetModifierMapping(Display* display)
+{
+  /* TODO: Verify its use. */
   DPRINTF("XGetModifierMapping()\n");
-  return _real_XGetModifierMapping(display);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  std::ostringstream funcCall;
+  funcCall << "XGetModifierMapping(" << (void*)display << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XGetModifierMapping(l_real_dp);
 }
 
 extern "C" XModifierKeymap	*XInsertModifiermapEntry(XModifierKeymap* modmap ,
@@ -61,17 +71,31 @@ extern "C" XModifierKeymap *XNewModifiermap(int max_keys_per_mod ) {
   return _real_XNewModifiermap(max_keys_per_mod);
 }
 
-extern "C" XImage *XCreateImage(Display* display ,Visual* visual ,unsigned int depth ,int format ,int offset ,char* data ,unsigned int width ,unsigned int height ,int bitmap_pad ,int bytes_per_line ) {
+extern "C" XImage *XCreateImage(Display* display, Visual* visual, unsigned int depth, int format, int offset, char* data, unsigned int width, unsigned int height, int bitmap_pad, int bytes_per_line)
+{
   DPRINTF("XCreateImage()\n");
-  return _real_XCreateImage(display,visual,depth,format,offset,data,width,height,bitmap_pad,bytes_per_line);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Visual *l_visual_buff = NULL;
+  if (visual)
+  {
+    l_visual_buff = new Visual;
+    memcpy(l_visual_buff, visual, sizeof(Visual));
+  }
+  std::ostringstream funcCall;
+  funcCall << "XCreateImage(" << (void*)display << "," << (void*)l_visual_buff << "," << depth << "," << format << "," << offset << "," << (void*)data << "," << width << "," << height << "," << bitmap_pad << "," << bytes_per_line << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  XImage* l_real_img =  _real_XCreateImage(l_real_dp,l_visual_buff,depth,format,offset,data,width,height,bitmap_pad,bytes_per_line);
+  return XLIB_VIRT_CALL_FUNC.save_ximg(l_real_img);
 }
 
-extern "C" Status XInitImage(XImage* image ) {
+extern "C" Status XInitImage(XImage* image)
+{
   DPRINTF("XInitImage()\n");
   return _real_XInitImage(image);
 }
 
-extern "C" XImage *XGetImage(Display* display ,Drawable d ,int x ,int y ,unsigned int width ,unsigned int height ,unsigned long plane_mask ,int format ) {
+extern "C" XImage *XGetImage(Display* display ,Drawable d ,int x ,int y ,unsigned int width ,unsigned int height ,unsigned long plane_mask ,int format )
+{
   DPRINTF("XGetImage()\n");
   return _real_XGetImage(display,d,x,y,width,height,plane_mask,format);
 }
@@ -103,12 +127,14 @@ void *dlopen(const char *filename, int flag)
 }
 #endif
 
-extern "C" Display *XOpenDisplay(_Xconst char* display_name ) {
+extern "C" Display *XOpenDisplay(_Xconst char* display_name) {
   DPRINTF("XOpenDisplay()\n");
-  Display *dp =  _real_XOpenDisplay(display_name);
-  XLIB_VIRT_CALL_FUNC.save_display(dp);
-  XLIB_VIRT_SAVE_FUNC_CALL("XOpenDisplay()");
-  return XLIB_VIRT_CALL_FUNC.get_virtual_dp();
+  Display *l_real_dp = _real_XOpenDisplay(display_name);
+  XLIB_VIRT_CALL_FUNC.save_display(l_real_dp);
+  std::ostringstream funcCall;
+  funcCall << "XOpenDisplay(" << display_name << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return XLIB_VIRT_CALL_FUNC.real_to_virtual_display_pointer(l_real_dp);
 }
 
 extern "C" void XrmInitialize(void) {
@@ -116,12 +142,12 @@ extern "C" void XrmInitialize(void) {
   _real_XrmInitialize();
 }
 
-extern "C" char *XFetchBytes(Display* display ,int* nbytes_return ) {
+extern "C" char *XFetchBytes(Display* display, int* nbytes_return) {
   DPRINTF("XFetchBytes()\n");
   return _real_XFetchBytes(display,nbytes_return);
 }
 
-extern "C" char *XFetchBuffer(Display* display ,int* nbytes_return ,int buffer ) {
+extern "C" char *XFetchBuffer(Display* display, int* nbytes_return, int buffer) {
   DPRINTF("XFetchBuffer()\n");
   return _real_XFetchBuffer(display,nbytes_return,buffer);
 }
@@ -136,13 +162,24 @@ extern "C" Status XGetAtomNames(Display* dpy ,Atom* atoms ,int count ,char** nam
   return _real_XGetAtomNames(dpy,atoms,count,names_return);
 }
 
-extern "C" char *XGetDefault(Display* display ,_Xconst char* program ,_Xconst char* option ) {
+extern "C" char *XGetDefault(Display* display, _Xconst char* program, _Xconst char* option)
+{
+  /* TODO: Verify that program and option should not be copied. */
   DPRINTF("XGetDefault()\n");
-  return _real_XGetDefault(display,program,option);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  std::ostringstream funcCall;
+  funcCall << "XGetDefault(" << (void*)display << "," << program << "," << option << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XGetDefault(l_real_dp,program,option);
 }
 
-extern "C" char *XDisplayName(_Xconst char* string ) {
+extern "C" char *XDisplayName(_Xconst char* string)
+{
+  /* TODO: Verify that the client will not use the display name returned here */
   DPRINTF("XDisplayName()\n");
+  std::ostringstream funcCall;
+  funcCall << "XDisplayName(" << string << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
   return _real_XDisplayName(string);
 }
 
@@ -165,9 +202,15 @@ extern "C" int (*XSetAfterFunction(Display* display ,int (*) (Display* display )
 }
 */
 
-extern "C" Atom XInternAtom(Display* display ,_Xconst char* atom_name ,Bool only_if_exists ) {
+extern "C" Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists)
+{
   DPRINTF("XInternAtom()\n");
-  return _real_XInternAtom(display,atom_name,only_if_exists);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  std::ostringstream funcCall;
+  funcCall << "XInternAtom(" << (void*)display << "," << atom_name << "," << only_if_exists << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  /* TODO: Verify that we don't need to virtualize the Atoms. */
+  return _real_XInternAtom(l_real_dp,atom_name,only_if_exists);
 }
 
 extern "C" Status XInternAtoms(Display* dpy ,char** names ,int count ,Bool onlyIfExists ,Atom* atoms_return ) {
@@ -180,14 +223,57 @@ extern "C" Colormap XCopyColormapAndFree(Display* display ,Colormap colormap ) {
   return _real_XCopyColormapAndFree(display,colormap);
 }
 
-extern "C" Colormap XCreateColormap(Display* display ,Window w ,Visual* visual ,int alloc ) {
+extern "C" Colormap XCreateColormap(Display* display, Window w, Visual* visual, int alloc)
+{
   DPRINTF("XCreateColormap()\n");
-  return _real_XCreateColormap(display,w,visual,alloc);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  Colormap l_real_colormap =  _real_XCreateColormap(l_real_dp,l_real_win,visual,alloc);
+  XLIB_VIRT_CALL_FUNC.save_colormap(l_real_colormap);
+  Visual *l_visual_buff = NULL;
+  if (visual)
+  {
+    l_visual_buff = new Visual;
+    memcpy(l_visual_buff, visual, sizeof(Visual));
+  }
+  std::ostringstream funcCall;
+  funcCall << "XCreateColormap(" << (void*)display << "," << w << "," << (void*)l_visual_buff << "," << alloc << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return  XLIB_VIRT_CALL_FUNC.real_to_virtual_colormap(l_real_colormap);
 }
 
-extern "C" Cursor XCreatePixmapCursor(Display* display ,Pixmap source ,Pixmap mask ,XColor* foreground_color ,XColor* background_color ,unsigned int x ,unsigned int y ) {
+extern "C" Cursor XCreatePixmapCursor(Display* display, Pixmap source, Pixmap mask, XColor* foreground_color, XColor* background_color, unsigned int x, unsigned int y)
+{
   DPRINTF("XCreatePixmapCursor()\n");
-  return _real_XCreatePixmapCursor(display,source,mask,foreground_color,background_color,x,y);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Pixmap l_source_pmp, l_mask_pmp;
+  l_source_pmp = XLIB_VIRT_CALL_FUNC.virtual_to_real_pixmap(source);
+  l_mask_pmp = XLIB_VIRT_CALL_FUNC.virtual_to_real_pixmap(mask);
+  if (l_source_pmp < 0)
+  {
+    l_source_pmp = XLIB_VIRT_CALL_FUNC.save_pixmap(source);
+  }
+  if (l_mask_pmp < 0)
+  {
+    l_mask_pmp = XLIB_VIRT_CALL_FUNC.save_pixmap(mask);
+  }
+  XColor *l_foreground_color_buff = NULL, *l_background_color_buff = NULL;
+  if (foreground_color)
+  {
+    l_foreground_color_buff = new XColor;
+    memcpy(l_foreground_color_buff, foreground_color, sizeof(XColor));
+  }
+  if (background_color)
+  {
+    l_background_color_buff = new XColor;
+    memcpy(l_background_color_buff, background_color, sizeof(XColor));
+  }
+  Pixmap l_real_cursor = _real_XCreatePixmapCursor(l_real_dp,l_source_pmp,l_mask_pmp, l_foreground_color_buff,l_background_color_buff,x,y);
+  XLIB_VIRT_CALL_FUNC.save_cursor(l_real_cursor);
+  std::ostringstream funcCall;
+  funcCall << "XCreatePixmapCursor(" << (void*)display << "," << l_source_pmp << "," << l_mask_pmp << "," << (void*)l_foreground_color_buff << "," << l_background_color_buff << "," << x << "," << y << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return XLIB_VIRT_CALL_FUNC.real_to_virtual_cursor(l_real_cursor);
 }
 
 extern "C" Cursor XCreateGlyphCursor(Display* display ,Font source_font ,Font mask_font ,unsigned int source_char ,unsigned int mask_char ,XColor _Xconst * foreground_color ,XColor _Xconst * background_color ) {
@@ -205,9 +291,22 @@ extern "C" Font XLoadFont(Display* display ,_Xconst char* name ) {
   return _real_XLoadFont(display,name);
 }
 
-extern "C" GC XCreateGC(Display* display ,Drawable d ,unsigned long valuemask ,XGCValues* values ) {
+extern "C" GC XCreateGC(Display* display, Drawable d, unsigned long valuemask, XGCValues* values)
+{
   DPRINTF("XCreateGC()\n");
-  return _real_XCreateGC(display,d,valuemask,values);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Drawable l_real_d = XLIB_VIRT_CALL_FUNC.virtual_to_real_drawable(d);
+  XGCValues *l_values_buff = NULL;
+  if(values)
+  {
+    XGCValues *l_values_buff = new XGCValues;
+    memcpy(l_values_buff, values, sizeof(l_values_buff));
+  }
+  std::ostringstream funcCall;
+  funcCall << "XCreateGC(" << (void*)display << "," << d << "," << valuemask << "," << (void*)l_values_buff << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  GC l_real_gc = _real_XCreateGC(l_real_dp,l_real_d,valuemask,l_values_buff);
+  return XLIB_VIRT_CALL_FUNC.save_gc(l_real_gc);
 }
 
 extern "C" GContext XGContextFromGC(GC gc ) {
@@ -215,14 +314,25 @@ extern "C" GContext XGContextFromGC(GC gc ) {
   return _real_XGContextFromGC(gc);
 }
 
-extern "C" void XFlushGC(Display* display ,GC gc ) {
+extern "C" void XFlushGC(Display* display, GC gc)
+{
   DPRINTF("XFlushGC()\n");
-  _real_XFlushGC(display,gc);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  GC l_real_gc = XLIB_VIRT_CALL_FUNC.virtual_to_real_gc(gc);
+  _real_XFlushGC(l_real_dp,l_real_gc);
 }
 
-extern "C" Pixmap XCreatePixmap(Display* display ,Drawable d ,unsigned int width ,unsigned int height ,unsigned int depth ) {
+extern "C" Pixmap XCreatePixmap(Display* display, Drawable d, unsigned int width, unsigned int height, unsigned int depth)
+{
   DPRINTF("XCreatePixmap()\n");
-  return _real_XCreatePixmap(display,d,width,height,depth);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Drawable l_real_d = XLIB_VIRT_CALL_FUNC.virtual_to_real_drawable(d);
+  Pixmap l_real_pmp = _real_XCreatePixmap(l_real_dp,l_real_d,width,height,depth);
+  XLIB_VIRT_CALL_FUNC.save_pixmap(l_real_pmp);
+  std::ostringstream funcCall;
+  funcCall << "XCreatePixmap(" << (void*)display << "," << d << "," << width << "," << height << "," << depth << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return XLIB_VIRT_CALL_FUNC.real_to_virtual_pixmap(l_real_pmp);
 }
 
 extern "C" Pixmap XCreateBitmapFromData(Display* display ,Drawable d ,_Xconst char* data ,unsigned int width ,unsigned int height ) {
@@ -230,15 +340,45 @@ extern "C" Pixmap XCreateBitmapFromData(Display* display ,Drawable d ,_Xconst ch
   return _real_XCreateBitmapFromData(display,d,data,width,height);
 }
 
-extern "C" Pixmap XCreatePixmapFromBitmapData(Display* display ,Drawable d ,char* data ,unsigned int width ,unsigned int height ,unsigned long fg ,unsigned long bg ,unsigned int depth ) {
+extern "C" Pixmap XCreatePixmapFromBitmapData(Display* display, Drawable d, char* data, unsigned int width, unsigned int height, unsigned long fg, unsigned long bg, unsigned int depth)
+{
   DPRINTF("XCreatePixmapFromBitmapData()\n");
-  return _real_XCreatePixmapFromBitmapData(display,d,data,width,height,fg,bg,depth);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Drawable l_real_d = XLIB_VIRT_CALL_FUNC.virtual_to_real_drawable(d);
+  char *l_data_buff = NULL;
+  if (data)
+  {
+    /* FIXME: 4 is just a temporary solution; this should work for most (all?)
+     * cases, except may be with 32+ bit depth.
+     */
+    l_data_buff = new char[width*height*4];
+    memcpy(l_data_buff, data, width*height*4*sizeof(char));
+  }
+  Pixmap l_real_pmp = _real_XCreatePixmapFromBitmapData(l_real_dp,l_real_d,l_data_buff,width,height,fg,bg,depth);
+  XLIB_VIRT_CALL_FUNC.save_pixmap(l_real_pmp);
+  std::ostringstream funcCall;
+  funcCall << "XCreatePixmapFromBitmapData(" << (void*)display << "," << d << "," << (void*)l_data_buff << "," << width << "," << height << "," << fg << "," << "," << bg << "," << depth << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return XLIB_VIRT_CALL_FUNC.real_to_virtual_pixmap(l_real_pmp);
 }
 
-extern "C" Window XCreateSimpleWindow(Display* display ,Window parent ,int x ,int y ,unsigned int width ,unsigned int height ,unsigned int border_width ,unsigned long border ,unsigned long background ) {
+extern "C" Window XCreateSimpleWindow(Display* display, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int border_width, unsigned long border, unsigned long background)
+{
   DPRINTF("XCreateSimpleWindow()\n");
-  Window win =  _real_XCreateSimpleWindow(display,parent,x,y,width,height,border_width,border,background);
-  return win;
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_parent = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(parent);
+  Window l_virt_parent;
+  if (l_real_parent == -1)
+  {
+    l_virt_parent = XLIB_VIRT_CALL_FUNC.save_window(parent);
+    l_real_parent = parent;
+  }
+  Window l_real_win = _real_XCreateSimpleWindow(l_real_dp, l_real_parent, x, y, width, height, border_width, border, background);
+  XLIB_VIRT_CALL_FUNC.save_window(l_real_win);
+  std::ostringstream funcCall;
+  funcCall << "XCreateSimpleWindow(" << (void*)display << "," << l_virt_parent << "," << x << "," << y << "," << width << "," << height << "," << border_width << "," << border << "," << background << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return XLIB_VIRT_CALL_FUNC.real_to_virtual_window(l_real_win);
 }
 
 extern "C" Window XGetSelectionOwner(Display* display ,Atom selection ) {
@@ -246,9 +386,35 @@ extern "C" Window XGetSelectionOwner(Display* display ,Atom selection ) {
   return _real_XGetSelectionOwner(display,selection);
 }
 
-extern "C" Window XCreateWindow(Display* display ,Window parent ,int x ,int y ,unsigned int width ,unsigned int height ,unsigned int border_width ,int depth ,unsigned int cl ,Visual* visual ,unsigned long valuemask ,XSetWindowAttributes* attributes ) {
+extern "C" Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int border_width, int depth, unsigned int cl, Visual* visual, unsigned long valuemask, XSetWindowAttributes* attributes)
+{
   DPRINTF("XCreateWindow()\n");
-  return _real_XCreateWindow(display,parent,x,y,width,height,border_width,depth,cl,visual,valuemask,attributes);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_parent = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(parent);
+  Window l_virt_parent;
+  if (l_real_parent == -1)
+  {
+    l_virt_parent = XLIB_VIRT_CALL_FUNC.save_window(parent);
+    l_real_parent = parent;
+  }
+  Visual *l_visual_buff = NULL;
+  XSetWindowAttributes *l_attributes_buff = NULL;
+  if (visual)
+  {
+    l_visual_buff = new Visual;
+    memcpy(l_visual_buff, visual, sizeof(Visual));
+  }
+  if (attributes)
+  {
+    l_attributes_buff = new XSetWindowAttributes;
+    memcpy(l_attributes_buff, attributes, sizeof(XSetWindowAttributes));
+  }
+  Window l_real_win = _real_XCreateWindow(l_real_dp, l_real_parent, x, y, width, height, border_width, depth, cl, l_visual_buff, valuemask, l_attributes_buff);
+  XLIB_VIRT_CALL_FUNC.save_window(l_real_win);
+  std::ostringstream funcCall;
+  funcCall << "XCreateWindow(" << (void*)display << "," << l_virt_parent << "," << x << "," << y << "," << width << "," << height << "," << border_width << "," << depth << "," << cl << "," << (void*)l_visual_buff << "," << valuemask << "," << (void*)l_attributes_buff << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return XLIB_VIRT_CALL_FUNC.real_to_virtual_window(l_real_win);
 }
 
 extern "C" Colormap *XListInstalledColormaps(Display* display ,Window w ,int* num_return ) {
@@ -293,12 +459,19 @@ unsigned int keycode ,
 KeyCode keycode ,
 #endif
 int index ) {
+  /* TODO: Verify this. */
   DPRINTF("XKeycodeToKeysym()\n");
-  return _real_XKeycodeToKeysym(display,keycode,index);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  std::ostringstream funcCall;
+  funcCall << "XKeycodeToKeysym(" << (void*)display << "," << keycode << "," << index << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XKeycodeToKeysym(l_real_dp,keycode,index);
 }
 
-extern "C" KeySym XLookupKeysym(XKeyEvent* key_event ,int index ) {
+extern "C" KeySym XLookupKeysym(XKeyEvent* key_event, int index)
+{
   DPRINTF("XLookupKeysym()\n");
+  /* TODO: Verify that we don't need to virtualize KeySym or log this call */
   return _real_XLookupKeysym(key_event,index);
 }
 
@@ -363,14 +536,25 @@ extern "C" void XUnlockDisplay(Display* display ) {
   _real_XUnlockDisplay(display);
 }
 
-extern "C" XExtCodes *XInitExtension(Display* display ,_Xconst char* name ) {
+extern "C" XExtCodes *XInitExtension(Display* display, _Xconst char* name)
+{
+  /* TODO: Verify that copying name into a local buffer is not required. */
   DPRINTF("XInitExtension()\n");
-  return _real_XInitExtension(display,name);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  std::ostringstream funcCall;
+  funcCall << "XInitExtension(" << (void*)display << "," << name << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XInitExtension(l_real_dp,name);
 }
 
-extern "C" XExtCodes *XAddExtension(Display* display ) {
+extern "C" XExtCodes *XAddExtension(Display* display)
+{
   DPRINTF("XAddExtension()\n");
-  return _real_XAddExtension(display);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  std::ostringstream funcCall;
+  funcCall << "XAddExtension(" << (void*)display << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XAddExtension(l_real_dp);
 }
 
 extern "C" XExtData *XFindOnExtensionList(XExtData** structure ,int number ) {
@@ -478,9 +662,10 @@ extern "C" Display *XDisplayOfScreen(Screen* screen ) {
   return _real_XDisplayOfScreen(screen);
 }
 
-extern "C" Screen *XScreenOfDisplay(Display* display ,int screen_number ) {
+extern "C" Screen *XScreenOfDisplay(Display* display, int screen_number) {
   DPRINTF("XScreenOfDisplay()\n");
-  return _real_XScreenOfDisplay(display,screen_number);
+  Display* l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XScreenOfDisplay(l_real_dp, screen_number);
 }
 
 extern "C" Screen *XDefaultScreenOfDisplay(Display* display ) {
@@ -498,19 +683,29 @@ extern "C" int XScreenNumberOfScreen(Screen* screen ) {
   return _real_XScreenNumberOfScreen(screen);
 }
 
-extern "C" XErrorHandler XSetErrorHandler (XErrorHandler handler ) {
+extern "C" XErrorHandler XSetErrorHandler (XErrorHandler handler)
+{
   DPRINTF("XSetErrorHandler()\n");
+  std::ostringstream funcCall;
+  funcCall << "XSetErrorHandler(" << handler << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
   return _real_XSetErrorHandler(handler);
 }
 
 extern "C" XIOErrorHandler XSetIOErrorHandler (XIOErrorHandler handler ) {
   DPRINTF("XSetIOErrorHandler()\n");
+  std::ostringstream funcCall;
+  funcCall << "XSetIOErrorHandler(" << handler << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
   return _real_XSetIOErrorHandler(handler);
 }
 
-extern "C" XPixmapFormatValues *XListPixmapFormats(Display* display ,int* count_return ) {
+extern "C" XPixmapFormatValues *XListPixmapFormats(Display* display, int* count_return)
+{
   DPRINTF("XListPixmapFormats()\n");
-  return _real_XListPixmapFormats(display,count_return);
+  /* TODO: Verify that we don't need to log this call */
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XListPixmapFormats(l_real_dp,count_return);
 }
 
 extern "C" int *XListDepths(Display* display ,int screen_number ,int* count_return ) {
@@ -528,9 +723,22 @@ extern "C" Status XGetWMProtocols(Display* display ,Window w ,Atom** protocols_r
   return _real_XGetWMProtocols(display,w,protocols_return,count_return);
 }
 
-extern "C" Status XSetWMProtocols(Display* display ,Window w ,Atom* protocols ,int count ) {
+extern "C" Status XSetWMProtocols(Display* display, Window w, Atom* protocols, int count)
+{
   DPRINTF("XSetWMProtocols()\n");
-  return _real_XSetWMProtocols(display,w,protocols,count);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  Atom *l_protocols_buff = NULL;
+  if (protocols)
+  {
+    l_protocols_buff = new Atom[count];
+    memcpy(l_protocols_buff, protocols, count*sizeof(Atom));
+  }
+  Status l_ret_status = _real_XSetWMProtocols(l_real_dp,l_real_win,l_protocols_buff,count);
+  std::ostringstream funcCall;
+  funcCall << "XSetWMProtocols(" << (void*)display << "," << w << "," << (void*)l_protocols_buff << "," << count <<")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return l_ret_status;
 }
 
 extern "C" Status XIconifyWindow(Display* display ,Window w ,int screen_number ) {
@@ -593,9 +801,21 @@ extern "C" int XAddToSaveSet(Display* display ,Window w ) {
   return _real_XAddToSaveSet(display,w);
 }
 
-extern "C" Status XAllocColor(Display* display ,Colormap colormap ,XColor* screen_in_out ) {
+extern "C" Status XAllocColor(Display* display, Colormap colormap, XColor* screen_in_out)
+{
   DPRINTF("XAllocColor()\n");
-  return _real_XAllocColor(display,colormap,screen_in_out);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  XColor *l_screen_in_out_buff = NULL;
+  Status l_ret_status = _real_XAllocColor(l_real_dp,colormap,screen_in_out);
+  if (screen_in_out)
+  {
+    l_screen_in_out_buff = new XColor;
+    memcpy(l_screen_in_out_buff, screen_in_out, sizeof(XColor));
+  }
+  std::ostringstream funcCall;
+  funcCall << "XAllocColor(" << (void*)display << "," << colormap << "," << (void*)l_screen_in_out_buff << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return l_ret_status;
 }
 
 extern "C" Status XAllocColorCells(Display* display ,Colormap colormap ,Bool contig ,unsigned long* plane_masks_return ,unsigned int nplanes ,unsigned long* pixels_return ,unsigned int npixels ) {
@@ -653,9 +873,12 @@ extern "C" int XCellsOfScreen(Screen* screen ) {
   return _real_XCellsOfScreen(screen);
 }
 
-extern "C" int XChangeActivePointerGrab(Display* display ,unsigned int event_mask ,Cursor cursor ,Time time ) {
+extern "C" int XChangeActivePointerGrab(Display* display, unsigned int event_mask, Cursor cursor, Time time)
+{
   DPRINTF("XChangeActivePointerGrab()\n");
-  return _real_XChangeActivePointerGrab(display,event_mask,cursor,time);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  /* TODO: Save to buff */
+  return _real_XChangeActivePointerGrab(l_real_dp, event_mask, cursor, time);
 }
 
 extern "C" int XChangeGC(Display* display ,GC gc ,unsigned long valuemask ,XGCValues* values ) {
@@ -678,9 +901,24 @@ extern "C" int XChangePointerControl(Display* display ,Bool do_accel ,Bool do_th
   return _real_XChangePointerControl(display,do_accel,do_threshold,accel_numerator,accel_denominator,threshold);
 }
 
-extern "C" int XChangeProperty(Display* display ,Window w ,Atom property ,Atom type ,int format ,int mode ,_Xconst unsigned char* data ,int nelements ) {
+extern "C" int XChangeProperty(Display* display, Window w, Atom property, Atom type, int format, int mode, _Xconst unsigned char* data, int nelements)
+{
   DPRINTF("XChangeProperty()\n");
-  return _real_XChangeProperty(display,w,property,type,format,mode,data,nelements);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  /* TODO: Verify that this works. */
+#if 0
+  unsigned char* l_data_buff = NULL;
+  if (l_data_buff)
+  {
+    l_data_buff = new unsigned char[nelements];
+    memcpy(l_data_buff, data, nelements);
+  }
+#endif
+  std::ostringstream funcCall;
+  funcCall << "XChangeProperty(" << (void*)display << "," << w << "," << property << "," << type << "," << format << "," << data << "," << nelements << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XChangeProperty(l_real_dp,l_real_win,property,type,format,mode,data,nelements);
 }
 
 extern "C" int XChangeSaveSet(Display* display ,Window w ,int change_mode ) {
@@ -745,9 +983,11 @@ extern "C" int XClearWindow(Display* display ,Window w ) {
   return _real_XClearWindow(display,w);
 }
 
-extern "C" int XCloseDisplay(Display* display ) {
+extern "C" int XCloseDisplay(Display* display)
+{
   DPRINTF("XCloseDisplay()\n");
-  return _real_XCloseDisplay(display);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XCloseDisplay(l_real_dp);
 }
 
 extern "C" int XConfigureWindow(Display* display ,Window w ,unsigned int value_mask ,XWindowChanges* values ) {
@@ -782,7 +1022,8 @@ extern "C" int XCopyPlane(Display* display ,Drawable src ,Drawable dest ,GC gc ,
 
 extern "C" int XDefaultDepth(Display* display ,int screen_number ) {
   DPRINTF("XDefaultDepth()\n");
-  return _real_XDefaultDepth(display,screen_number);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDefaultDepth(l_real_dp,screen_number);
 }
 
 extern "C" int XDefaultDepthOfScreen(Screen* screen ) {
@@ -792,22 +1033,43 @@ extern "C" int XDefaultDepthOfScreen(Screen* screen ) {
 
 extern "C" int XDefaultScreen(Display* display ) {
   DPRINTF("XDefaultScreen()\n");
-  return _real_XDefaultScreen(display);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDefaultScreen(l_real_dp);
 }
 
-extern "C" int XDefineCursor(Display* display ,Window w ,Cursor cursor ) {
+extern "C" int XDefineCursor(Display* display, Window w, Cursor cursor)
+{
   DPRINTF("XDefineCursor()\n");
-  return _real_XDefineCursor(display,w,cursor);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  Cursor l_real_cursor = XLIB_VIRT_CALL_FUNC.virtual_to_real_cursor(cursor);
+  std::ostringstream funcCall;
+  funcCall << "XDefineCursor(" << (void*)display << "," << w << "," << cursor << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XDefineCursor(l_real_dp,l_real_win,l_real_cursor);
 }
 
-extern "C" int XDeleteProperty(Display* display ,Window w ,Atom property ) {
+extern "C" int XDeleteProperty(Display* display, Window w, Atom property)
+{
   DPRINTF("XDeleteProperty()\n");
-  return _real_XDeleteProperty(display,w,property);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  std::ostringstream funcCall;
+  funcCall << "XDeleteProperty(" << (void*)display << "," << w << "," << property << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XDeleteProperty(l_real_dp,l_real_win,property);
 }
 
-extern "C" int XDestroyWindow(Display* display ,Window w ) {
+extern "C" int XDestroyWindow(Display* display, Window w)
+{
   DPRINTF("XDestroyWindow()\n");
-  return _real_XDestroyWindow(display,w);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  std::ostringstream funcCall;
+  funcCall << "XDestroyWindow(" << (void*)display << "," << w << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  XLIB_VIRT_CALL_FUNC.remove_window(w);
+  return _real_XDestroyWindow(l_real_dp,l_real_win);
 }
 
 extern "C" int XDestroySubwindows(Display* display ,Window w ) {
@@ -827,22 +1089,26 @@ extern "C" Bool XDoesSaveUnders(Screen* screen ) {
 
 extern "C" int XDisableAccessControl(Display* display ) {
   DPRINTF("XDisableAccessControl()\n");
-  return _real_XDisableAccessControl(display);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDisableAccessControl(l_real_dp);
 }
 
 extern "C" int XDisplayCells(Display* display ,int screen_number ) {
   DPRINTF("XDisplayCells()\n");
-  return _real_XDisplayCells(display,screen_number);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDisplayCells(l_real_dp,screen_number);
 }
 
 extern "C" int XDisplayHeight(Display* display ,int screen_number ) {
   DPRINTF("XDisplayHeight()\n");
-  return _real_XDisplayHeight(display,screen_number);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDisplayHeight(l_real_dp,screen_number);
 }
 
 extern "C" int XDisplayHeightMM(Display* display ,int screen_number ) {
   DPRINTF("XDisplayHeightMM()\n");
-  return _real_XDisplayHeightMM(display,screen_number);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDisplayHeightMM(l_real_dp,screen_number);
 }
 
 extern "C" int XDisplayKeycodes(Display* display ,int* min_keycodes_return ,int* max_keycodes_return ) {
@@ -852,17 +1118,20 @@ extern "C" int XDisplayKeycodes(Display* display ,int* min_keycodes_return ,int*
 
 extern "C" int XDisplayPlanes(Display* display ,int screen_number ) {
   DPRINTF("XDisplayPlanes()\n");
-  return _real_XDisplayPlanes(display,screen_number);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDisplayPlanes(l_real_dp,screen_number);
 }
 
 extern "C" int XDisplayWidth(Display* display ,int screen_number ) {
   DPRINTF("XDisplayWidth()\n");
-  return _real_XDisplayWidth(display,screen_number);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDisplayWidth(l_real_dp,screen_number);
 }
 
 extern "C" int XDisplayWidthMM(Display* display ,int screen_number ) {
   DPRINTF("XDisplayWidthMM()\n");
-  return _real_XDisplayWidthMM(display,screen_number);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XDisplayWidthMM(l_real_dp,screen_number);
 }
 
 extern "C" int XDrawArc(Display* display ,Drawable d ,GC gc ,int x ,int y ,unsigned int width ,unsigned int height ,int angle1 ,int angle2 ) {
@@ -905,9 +1174,16 @@ extern "C" int XDrawPoints(Display* display ,Drawable d ,GC gc ,XPoint* points ,
   return _real_XDrawPoints(display,d,gc,points,npoints,mode);
 }
 
-extern "C" int XDrawRectangle(Display* display ,Drawable d ,GC gc ,int x ,int y ,unsigned int width ,unsigned int height ) {
+extern "C" int XDrawRectangle(Display* display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height)
+{
   DPRINTF("XDrawRectangle()\n");
-  return _real_XDrawRectangle(display,d,gc,x,y,width,height);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Drawable l_real_d = XLIB_VIRT_CALL_FUNC.virtual_to_real_drawable(d);
+  GC l_real_gc = XLIB_VIRT_CALL_FUNC.virtual_to_real_gc(gc);
+  std::ostringstream funcCall;
+  funcCall << "XMapWindow(" << (void*)display << "," << d << "," << gc << "," << x << "," << y << "," << width << "," << height << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XDrawRectangle(l_real_dp,l_real_d,l_real_gc,x,y,width,height);
 }
 
 extern "C" int XDrawRectangles(Display* display ,Drawable d ,GC gc ,XRectangle* rectangles ,int nrectangles ) {
@@ -980,9 +1256,11 @@ extern "C" int XFillRectangles(Display* display ,Drawable d ,GC gc ,XRectangle* 
   return _real_XFillRectangles(display,d,gc,rectangles,nrectangles);
 }
 
-extern "C" int XFlush(Display* display ) {
+extern "C" int XFlush(Display* display)
+{
   DPRINTF("XFlush()\n");
-  return _real_XFlush(display);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XFlush(l_real_dp);
 }
 
 extern "C" int XForceScreenSaver(Display* display ,int mode ) {
@@ -990,14 +1268,22 @@ extern "C" int XForceScreenSaver(Display* display ,int mode ) {
   return _real_XForceScreenSaver(display,mode);
 }
 
-extern "C" int XFree(void* data ) {
+extern "C" int XFree(void* data)
+{
   DPRINTF("XFree()\n");
   return _real_XFree(data);
 }
 
-extern "C" int XFreeColormap(Display* display ,Colormap colormap ) {
+extern "C" int XFreeColormap(Display* display, Colormap colormap)
+{
   DPRINTF("XFreeColormap()\n");
-  return _real_XFreeColormap(display,colormap);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Colormap l_real_cmp = XLIB_VIRT_CALL_FUNC.virtual_to_real_colormap(colormap);
+  std::ostringstream funcCall;
+  funcCall << "XFreeColormap(" << (void*)display << "," << colormap << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  XLIB_VIRT_CALL_FUNC.remove_colormap(colormap);
+  return _real_XFreeColormap(l_real_dp,l_real_cmp);
 }
 
 extern "C" int XFreeColors(Display* display ,Colormap colormap ,unsigned long* pixels ,int npixels ,unsigned long planes ) {
@@ -1005,9 +1291,16 @@ extern "C" int XFreeColors(Display* display ,Colormap colormap ,unsigned long* p
   return _real_XFreeColors(display,colormap,pixels,npixels,planes);
 }
 
-extern "C" int XFreeCursor(Display* display ,Cursor cursor ) {
+extern "C" int XFreeCursor(Display* display, Cursor cursor)
+{
   DPRINTF("XFreeCursor()\n");
-  return _real_XFreeCursor(display,cursor);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Cursor l_real_cursor = XLIB_VIRT_CALL_FUNC.virtual_to_real_cursor(cursor);
+  std::ostringstream funcCall;
+  funcCall << "XFreeCursor(" << (void*)display << "," << cursor << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  XLIB_VIRT_CALL_FUNC.remove_cursor(cursor);
+  return _real_XFreeCursor(l_real_dp,l_real_cursor);
 }
 
 extern "C" int XFreeExtensionList(char** list ) {
@@ -1035,19 +1328,32 @@ extern "C" int XFreeFontPath(char** list ) {
   return _real_XFreeFontPath(list);
 }
 
-extern "C" int XFreeGC(Display* display ,GC gc ) {
+extern "C" int XFreeGC(Display* display, GC gc)
+{
   DPRINTF("XFreeGC()\n");
-  return _real_XFreeGC(display,gc);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  GC l_real_gc = XLIB_VIRT_CALL_FUNC.virtual_to_real_gc(gc);
+  XLIB_VIRT_CALL_FUNC.remove_gc(gc);
+  return _real_XFreeGC(l_real_dp,l_real_gc);
 }
 
-extern "C" int XFreeModifiermap(XModifierKeymap* modmap ) {
+extern "C" int XFreeModifiermap(XModifierKeymap* modmap)
+{
+  /* TODO: Verify that this works. */
   DPRINTF("XFreeModifiermap()\n");
   return _real_XFreeModifiermap(modmap);
 }
 
-extern "C" int XFreePixmap(Display* display ,Pixmap pixmap ) {
+extern "C" int XFreePixmap(Display* display, Pixmap pixmap)
+{
   DPRINTF("XFreePixmap()\n");
-  return _real_XFreePixmap(display,pixmap);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Colormap l_real_pmp = XLIB_VIRT_CALL_FUNC.virtual_to_real_pixmap(pixmap);
+  std::ostringstream funcCall;
+  funcCall << "XFreePixmap(" << (void*)display << "," << pixmap << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  XLIB_VIRT_CALL_FUNC.remove_pixmap(pixmap);
+  return _real_XFreePixmap(l_real_dp,l_real_pmp);
 }
 
 extern "C" int XGeometry(Display* display ,int screen ,_Xconst char* position ,_Xconst char* default_position ,unsigned int bwidth ,unsigned int fwidth ,unsigned int fheight ,int xadder ,int yadder ,int* x_return ,int* y_return ,int* width_return ,int* height_return ) {
@@ -1207,14 +1513,22 @@ extern "C" int XMapSubwindows(Display* display ,Window w ) {
   return _real_XMapSubwindows(display,w);
 }
 
-extern "C" int XMapWindow(Display* display ,Window w ) {
+extern "C" int XMapWindow(Display* display, Window w) {
   DPRINTF("XMapWindow()\n");
-  return _real_XMapWindow(display,w);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  std::ostringstream funcCall;
+  funcCall << "XMapWindow(" << (void*)display << "," << w << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XMapWindow(l_real_dp, l_real_win);
 }
 
-extern "C" int XMaskEvent(Display* display ,long event_mask ,XEvent* event_return ) {
+extern "C" int XMaskEvent(Display* display, long event_mask, XEvent* event_return)
+{
   DPRINTF("XMaskEvent()\n");
-  return _real_XMaskEvent(display,event_mask,event_return);
+  /* TODO: Verify that this works, and we shouldn't be saving this to the log */
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XMaskEvent(l_real_dp,event_mask,event_return);
 }
 
 extern "C" int XMaxCmapsOfScreen(Screen* screen ) {
@@ -1229,27 +1543,46 @@ extern "C" int XMinCmapsOfScreen(Screen* screen ) {
 
 extern "C" int XMoveResizeWindow(Display* display ,Window w ,int x ,int y ,unsigned int width ,unsigned int height ) {
   DPRINTF("XMoveResizeWindow()\n");
-  return _real_XMoveResizeWindow(display,w,x,y,width,height);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  return _real_XMoveResizeWindow(l_real_dp,l_real_win,x,y,width,height);
 }
 
 extern "C" int XMoveWindow(Display* display ,Window w ,int x ,int y ) {
   DPRINTF("XMoveWindow()\n");
-  return _real_XMoveWindow(display,w,x,y);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  return _real_XMoveWindow(l_real_dp,l_real_win,x,y);
 }
 
-extern "C" int XNextEvent(Display* display ,XEvent* event_return ) {
+extern "C" int XNextEvent(Display* display, XEvent* event_return)
+{
   DPRINTF("XNextEvent()\n");
-  return _real_XNextEvent(display,event_return);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XNextEvent(l_real_dp, event_return);
 }
 
 extern "C" int XNoOp(Display* display ) {
   DPRINTF("XNoOp()\n");
-  return _real_XNoOp(display);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XNoOp(l_real_dp);
 }
 
-extern "C" Status XParseColor(Display* display ,Colormap colormap ,_Xconst char* spec ,XColor* exact_def_return ) {
+extern "C" Status XParseColor(Display* display, Colormap colormap, _Xconst char* spec, XColor* exact_def_return)
+{
   DPRINTF("XParseColor()\n");
-  return _real_XParseColor(display,colormap,spec,exact_def_return);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  XColor *l_exact_def_return_buff = NULL;
+  Status l_ret_status = _real_XParseColor(l_real_dp,colormap,spec,exact_def_return);
+  std::ostringstream funcCall;
+  if (exact_def_return)
+  {
+    l_exact_def_return_buff = new XColor;
+    memcpy(l_exact_def_return_buff, exact_def_return, sizeof(XColor));
+  }
+  funcCall << "XParseColor(" << (void*)display << "," << colormap << "," << spec << "," << (void*)l_exact_def_return_buff << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return l_ret_status;
 }
 
 extern "C" int XParseGeometry(_Xconst char* parsestring ,int* x_return ,int* y_return ,unsigned int* width_return ,unsigned int* height_return ) {
@@ -1269,9 +1602,11 @@ extern "C" int XPeekIfEvent(Display* display ,XEvent* event_return ,Bool (*) (Di
 }
 */
 
-extern "C" int XPending(Display* display ) {
+extern "C" int XPending(Display* display)
+{
   DPRINTF("XPending()\n");
-  return _real_XPending(display);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XPending(l_real_dp);
 }
 
 extern "C" int XPlanesOfScreen(Screen* screen ) {
@@ -1289,19 +1624,36 @@ extern "C" int XProtocolVersion(Display* display ) {
   return _real_XProtocolVersion(display);
 }
 
-extern "C" int XPutBackEvent(Display* display ,XEvent* event ) {
+extern "C" int XPutBackEvent(Display* display, XEvent* event)
+{
   DPRINTF("XPutBackEvent()\n");
-  return _real_XPutBackEvent(display,event);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  XEvent *l_event_buff = NULL;
+  if (event)
+  {
+    l_event_buff = new XEvent;
+    memcpy(l_event_buff, event, sizeof(XEvent));
+  }
+  return _real_XPutBackEvent(l_real_dp,l_event_buff);
 }
 
-extern "C" int XPutImage(Display* display ,Drawable d ,GC gc ,XImage* image ,int src_x ,int src_y ,int dest_x ,int dest_y ,unsigned int width ,unsigned int height ) {
+extern "C" int XPutImage(Display* display, Drawable d, GC gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height)
+{
   DPRINTF("XPutImage()\n");
-  return _real_XPutImage(display,d,gc,image,src_x,src_y,dest_x,dest_y,width,height);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Drawable l_real_d = XLIB_VIRT_CALL_FUNC.virtual_to_real_drawable(d);
+  GC l_real_gc = XLIB_VIRT_CALL_FUNC.virtual_to_real_gc(gc);
+  XImage *l_real_img = XLIB_VIRT_CALL_FUNC.virtual_to_real_ximg(image);
+  std::ostringstream funcCall;
+  funcCall << "XPutImage(" << (void*)display << "," << d << "," << (void*)image << "," << src_x << "," << src_y << "," << dest_x << "," << dest_y << "," << width << "," << height << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XPutImage(l_real_dp,l_real_d,l_real_gc,l_real_img,src_x,src_y,dest_x,dest_y,width,height);
 }
 
 extern "C" int XQLength(Display* display ) {
   DPRINTF("XQLength()\n");
-  return _real_XQLength(display);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  return _real_XQLength(l_real_dp);
 }
 
 extern "C" Status XQueryBestCursor(Display* display ,Drawable d ,unsigned int width ,unsigned int height ,unsigned int* width_return ,unsigned int* height_return ) {
@@ -1334,19 +1686,58 @@ extern "C" int XQueryColors(Display* display ,Colormap colormap ,XColor* defs_in
   return _real_XQueryColors(display,colormap,defs_in_out,ncolors);
 }
 
-extern "C" Bool XQueryExtension(Display* display ,_Xconst char* name ,int* major_opcode_return ,int* first_event_return ,int* first_error_return ) {
+extern "C" Bool XQueryExtension(Display* display, _Xconst char* name, int* major_opcode_return, int* first_event_return, int* first_error_return)
+{
   DPRINTF("XQueryExtension()\n");
-  return _real_XQueryExtension(display,name,major_opcode_return,first_event_return,first_error_return);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  int *l_major_opcode_return_buff = NULL, *l_first_event_return_buff = NULL, *l_first_error_return_buff = NULL;
+  if (major_opcode_return)
+  {
+    l_major_opcode_return_buff = new int;
+  }
+  if (first_event_return)
+  {
+    l_first_event_return_buff = new int;
+  }
+  if (first_error_return)
+  {
+    l_first_error_return_buff = new int;
+  }
+  Bool l_ret_bool = _real_XQueryExtension(l_real_dp,name,l_major_opcode_return_buff,l_first_event_return_buff,l_first_error_return_buff);
+  *major_opcode_return = *l_major_opcode_return_buff;
+  *first_event_return = *l_first_event_return_buff;
+  *first_error_return = *l_major_opcode_return_buff;
+  return l_ret_bool;
 }
 
-extern "C" int XQueryKeymap(Display* display ,char keys_return[32]) {
+extern "C" int XQueryKeymap(Display* display, char keys_return[32])
+{
   DPRINTF("XQueryKeymap()\n");
-  return _real_XQueryKeymap(display,keys_return);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  char *l_keys_return_buff = new char[32];
+  int l_ret_int = _real_XQueryKeymap(l_real_dp,l_keys_return_buff);
+  memcpy(keys_return, l_keys_return_buff, 32*sizeof(char));
+  /* TODO: Verify that you don't need to save this call to the log. */
+  return l_ret_int;
 }
 
-extern "C" Bool XQueryPointer(Display* display ,Window w ,Window* root_return ,Window* child_return ,int* root_x_return ,int* root_y_return ,int* win_x_return ,int* win_y_return ,unsigned int* mask_return ) {
+extern "C" Bool XQueryPointer(Display* display, Window w, Window* root_return, Window* child_return, int* root_x_return, int* root_y_return, int* win_x_return, int* win_y_return, unsigned int* mask_return)
+{
   DPRINTF("XQueryPointer()\n");
-  return _real_XQueryPointer(display,w,root_return,child_return,root_x_return,root_y_return,win_x_return,win_y_return,mask_return);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  Window l_real_root_return, l_real_child_return;
+  Bool l_ret_bool = _real_XQueryPointer(l_real_dp,l_real_win,&l_real_root_return,&l_real_child_return,root_x_return,root_y_return,win_x_return,win_y_return,mask_return);
+  Window l_virt_root_return = XLIB_VIRT_CALL_FUNC.real_to_virtual_window(l_real_root_return);
+  Window l_virt_child_return = XLIB_VIRT_CALL_FUNC.real_to_virtual_window(l_real_child_return);
+  if (l_virt_root_return < 0)
+    l_virt_root_return = XLIB_VIRT_CALL_FUNC.save_window(l_real_root_return);
+  if (l_virt_child_return < 0)
+    l_virt_root_return = XLIB_VIRT_CALL_FUNC.save_window(l_real_child_return);
+  *root_return = l_virt_root_return;
+  *child_return = l_virt_child_return;
+  /* TODO: Verify that you don't need to save this call to the log. */
+  return l_ret_bool;
 }
 
 extern "C" int XQueryTextExtents(Display* display ,XID font_ID ,_Xconst char* string ,int nchars ,int* direction_return ,int* font_ascent_return ,int* font_descent_return ,XCharStruct* overall_return ) {
@@ -1419,9 +1810,15 @@ extern "C" int XResetScreenSaver(Display* display ) {
   return _real_XResetScreenSaver(display);
 }
 
-extern "C" int XResizeWindow(Display* display ,Window w ,unsigned int width ,unsigned int height ) {
+extern "C" int XResizeWindow(Display* display, Window w, unsigned int width, unsigned int height)
+{
   DPRINTF("XResizeWindow()\n");
-  return _real_XResizeWindow(display,w,width,height);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  std::ostringstream funcCall;
+  funcCall << "XResizeWindow(" << (void*)display << "," << w << "," << width << "," << height << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XResizeWindow(l_real_dp,l_real_win,width,height);
 }
 
 extern "C" int XRestackWindows(Display* display ,Window* windows ,int nwindows ) {
@@ -1444,14 +1841,33 @@ extern "C" int XScreenCount(Display* display ) {
   return _real_XScreenCount(display);
 }
 
-extern "C" int XSelectInput(Display* display ,Window w ,long event_mask ) {
+extern "C" int XSelectInput(Display* display, Window w, long event_mask)
+{
   DPRINTF("XSelectInput()\n");
-  return _real_XSelectInput(display,w,event_mask);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  std::ostringstream funcCall;
+  funcCall << "XSelectInput(" << (void*)display << "," << w << "," << event_mask << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XSelectInput(l_real_dp, l_real_win, event_mask);
 }
 
-extern "C" Status XSendEvent(Display* display ,Window w ,Bool propagate ,long event_mask ,XEvent* event_send ) {
+extern "C" Status XSendEvent(Display* display, Window w, Bool propagate, long event_mask, XEvent* event_send)
+{
   DPRINTF("XSendEvent()\n");
-  return _real_XSendEvent(display,w,propagate,event_mask,event_send);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  XEvent* l_event_send_buff = NULL;
+  if (event_send)
+  {
+    l_event_send_buff = new XEvent;
+    memcpy(l_event_send_buff, event_send, sizeof(XEvent));
+  }
+  Status l_ret_status =  _real_XSendEvent(display,w,propagate,event_mask,l_event_send_buff);
+  std::ostringstream funcCall;
+  funcCall << "XSendEvent(" << (void*)display << "," << w << "," << event_mask << "," << (void*)l_event_send_buff<< ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return l_ret_status;
 }
 
 extern "C" int XSetAccessControl(Display* display ,int mode ) {
@@ -1519,9 +1935,15 @@ extern "C" int XSetFontPath(Display* display ,char** directories ,int ndirs ) {
   return _real_XSetFontPath(display,directories,ndirs);
 }
 
-extern "C" int XSetForeground(Display* display ,GC gc ,unsigned long foreground ) {
+extern "C" int XSetForeground(Display* display, GC gc, unsigned long foreground)
+{
   DPRINTF("XSetForeground()\n");
-  return _real_XSetForeground(display,gc,foreground);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  GC l_real_gc = XLIB_VIRT_CALL_FUNC.virtual_to_real_gc(gc);
+  std::ostringstream funcCall;
+  funcCall << "XSetForeground(" << (void*)display << "," << gc << "," << foreground << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XSetForeground(l_real_dp, l_real_gc, foreground);
 }
 
 extern "C" int XSetFunction(Display* display ,GC gc ,int function ) {
@@ -1644,14 +2066,32 @@ extern "C" int XStoreColor(Display* display ,Colormap colormap ,XColor* color ) 
   return _real_XStoreColor(display,colormap,color);
 }
 
-extern "C" int XStoreColors(Display* display ,Colormap colormap ,XColor* color ,int ncolors ) {
+extern "C" int XStoreColors(Display* display, Colormap colormap, XColor* color, int ncolors)
+{
   DPRINTF("XStoreColors()\n");
-  return _real_XStoreColors(display,colormap,color,ncolors);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Colormap l_real_cmp = XLIB_VIRT_CALL_FUNC.virtual_to_real_colormap(colormap);
+  XColor *l_colors_buff = NULL;
+  if (color)
+  {
+    l_colors_buff = new XColor[ncolors];
+    memcpy(l_colors_buff, color, ncolors*sizeof(XColor));
+  }
+  std::ostringstream funcCall;
+  funcCall << "XStoreColors(" << (void*)display << "," << colormap << "," << (void*)l_colors_buff << "," << ncolors << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XStoreColors(l_real_dp,l_real_cmp,l_colors_buff,ncolors);
 }
 
-extern "C" int XStoreName(Display* display ,Window w ,_Xconst char* window_name ) {
+extern "C" int XStoreName(Display* display, Window w, _Xconst char* window_name)
+{
   DPRINTF("XStoreName()\n");
-  return _real_XStoreName(display,w,window_name);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(w);
+  std::ostringstream funcCall;
+  funcCall << "XStoreName(" << (void*)display << "," << w << "," << window_name << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XStoreName(l_real_dp,l_real_win,window_name);
 }
 
 extern "C" int XStoreNamedColor(Display* display ,Colormap colormap ,_Xconst char* color ,unsigned long pixel ,int flags ) {
@@ -1659,9 +2099,14 @@ extern "C" int XStoreNamedColor(Display* display ,Colormap colormap ,_Xconst cha
   return _real_XStoreNamedColor(display,colormap,color,pixel,flags);
 }
 
-extern "C" int XSync(Display* display ,Bool discard ) {
+extern "C" int XSync(Display* display, Bool discard)
+{
   DPRINTF("XSync()\n");
-  return _real_XSync(display,discard);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(display);
+  std::ostringstream funcCall;
+  funcCall << "XSync(" << (void*)display << "," << discard << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XSync(l_real_dp,discard);
 }
 
 extern "C" int XTextExtents(XFontStruct* font_struct ,_Xconst char* string ,int nchars ,int* direction_return ,int* font_ascent_return ,int* font_descent_return ,XCharStruct* overall_return ) {
@@ -1774,8 +2219,12 @@ extern "C" Bool XSupportsLocale (void) {
   return _real_XSupportsLocale();
 }
 
-extern "C" char *XSetLocaleModifiers(const char* modifier_list ) {
+extern "C" char *XSetLocaleModifiers(const char* modifier_list)
+{
   DPRINTF("XSetLocaleModifiers()\n");
+  std::ostringstream funcCall;
+  funcCall << "XSetLocaleModifiers(" << modifier_list << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
   return _real_XSetLocaleModifiers(modifier_list);
 }
 
@@ -1970,14 +2419,32 @@ extern "C" void Xutf8DrawImageString(Display* display ,Drawable d ,XFontSet font
   _real_Xutf8DrawImageString(display,d,font_set,gc,x,y,text,bytes_text);
 }
 
-extern "C" XIM XOpenIM(Display* dpy ,struct _XrmHashBucketRec* rdb ,char* res_name ,char* res_class ) {
+extern "C" XIM XOpenIM(Display* dpy, struct _XrmHashBucketRec* rdb, char* res_name, char* res_class)
+{
   DPRINTF("XOpenIM()\n");
-  return _real_XOpenIM(dpy,rdb,res_name,res_class);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(dpy);
+  struct _XrmHashBucketRec *l_rdb_buff = NULL;
+  if (rdb)
+  {
+  /*
+   * TODO: Fix this.
+   * l_rdb_buff = new _XrmHashBucketRec;
+   * memcpy(l_rdb_buff, rdb, sizeof (struct _XrmHashBucketRec));
+   */
+  }
+  std::ostringstream funcCall;
+  funcCall << "XOpenIM(" << (void*)dpy << "," << (void*)l_rdb_buff << "," << res_name << "," << res_class << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  /* TODO: rdb should be l_rdb_buff */
+  XIM l_real_xim = _real_XOpenIM(l_real_dp,rdb,res_name,res_class);
+  return XLIB_VIRT_CALL_FUNC.save_xim(l_real_xim);
 }
 
-extern "C" Status XCloseIM(XIM im ) {
+extern "C" Status XCloseIM(XIM im)
+{
   DPRINTF("XCloseIM()\n");
-  return _real_XCloseIM(im);
+  XIM l_real_xim = XLIB_VIRT_CALL_FUNC.virtual_to_real_xim(im);
+  return _real_XCloseIM(l_real_xim);
 }
 
 extern "C" char *XGetIMValues(XIM im , ...) {
@@ -2000,9 +2467,15 @@ extern "C" char *XLocaleOfIM(XIM im) {
   return _real_XLocaleOfIM(im);
 }
 
-extern "C" XIC XCreateIC(XIM im , ...) {
+extern "C" XIC XCreateIC(XIM im , ...)
+{
   DPRINTF("XCreateIC()\n");
-  return _real_XCreateIC(im,NULL);
+  XIM l_real_xim = XLIB_VIRT_CALL_FUNC.virtual_to_real_xim(im);
+  /* TODO: Finish this. */
+  std::ostringstream funcCall;
+  funcCall << "XCreateIC(" << im << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return _real_XCreateIC(l_real_xim, NULL);
 }
 
 extern "C" void XDestroyIC(XIC ic ) {
@@ -2112,9 +2585,9 @@ extern "C" void XSetAuthorization(char * name ,int namelen ,char * data ,int dat
 
 extern "C" int _Xmbtowc(wchar_t * wstr ,
 #ifdef ISC
-char const * str ,size_t len 
+char const * str ,size_t len
 #else
-char * str ,int len 
+char * str ,int len
 #endif
 ) {
   DPRINTF("_Xmbtowc()\n");
@@ -2126,13 +2599,53 @@ extern "C" int _Xwctomb(char * str ,wchar_t wc ) {
   return _real__Xwctomb(str,wc);
 }
 
-extern "C" Bool XGetEventData(Display* dpy ,XGenericEventCookie* cookie) {
+extern "C" Bool XGetEventData(Display* dpy, XGenericEventCookie* cookie)
+{
   DPRINTF("XGetEventData()\n");
-  return _real_XGetEventData(dpy,cookie);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(dpy);
+  XGenericEventCookie *l_cookie_buff = NULL;
+  /* NOTE: struct XGenericEventCookie contains a Display* member. From the man
+   * page it is apparent that a client will only use a cookie returned by the
+   * Xlib/Xserver earlier. This means that the Display* will point to
+   * the real display. Verify that this is true. I'm hoping that a client will
+   * never directly manipulate or see that member, and only look at the data
+   * part.
+   */
+  assert(l_cookie_buff->display == l_real_dp);
+  if (cookie)
+  {
+    l_cookie_buff = new XGenericEventCookie;
+    memcpy(l_cookie_buff, cookie, sizeof(XGenericEventCookie));
+  }
+  Bool l_ret_bool =  _real_XGetEventData(l_real_dp,l_cookie_buff);
+  memcpy(cookie, l_cookie_buff, sizeof(XGenericEventCookie));
+  std::ostringstream funcCall;
+  funcCall << "XGetEventData(" << (void*)dpy << "," << (void*)l_cookie_buff << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return l_ret_bool;
 }
 
-extern "C" void XFreeEventData(Display* dpy ,XGenericEventCookie* cookie) {
+extern "C" void XFreeEventData(Display* dpy, XGenericEventCookie* cookie)
+{
   DPRINTF("XFreeEventData()\n");
-  _real_XFreeEventData(dpy,cookie);
+  Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer(dpy);
+  XGenericEventCookie *l_cookie_buff = NULL;
+  /* NOTE: struct XGenericEventCookie contains a Display* member. From the man
+   * page it is apparent that a client will only use a cookie returned by the
+   * Xlib/Xserver earlier. This means that the Display* will point to
+   * the real display. Verify that this is true. I'm hoping that a client will
+   * never directly manipulate or see that member, and only look at the data
+   * part.
+   */
+  assert(l_cookie_buff->display == l_real_dp);
+  if (cookie)
+  {
+    l_cookie_buff = new XGenericEventCookie;
+    memcpy(l_cookie_buff, cookie, sizeof(XGenericEventCookie));
+  }
+  _real_XFreeEventData(l_real_dp,l_cookie_buff);
+  std::ostringstream funcCall;
+  funcCall << "XFreeEventData(" << (void*)dpy << "," << (void*)l_cookie_buff << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
 }
 /* Auto generated code ends */
