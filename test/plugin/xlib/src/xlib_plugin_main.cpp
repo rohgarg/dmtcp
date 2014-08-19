@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <X11/Xlib.h>
 
-#include "dmtcpplugin.h"
+#include "dmtcp.h"
 #include "xlib_plugin_debug.h"
 
 void dmtcp_event_hook(DmtcpEvent_t event, DmtcpEventData_t *data)

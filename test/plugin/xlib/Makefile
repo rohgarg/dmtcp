@@ -10,7 +10,7 @@ LIBNAME=dmtcp_${NAME}hijack
 ifndef DMTCP_ROOT
   DMTCP_ROOT=../../..
 endif
-DMTCP_INCLUDE=${DMTCP_ROOT}/dmtcp/include
+DMTCP_INCLUDE=${DMTCP_ROOT}/include
 
 PLUGIN_INC_DIR=./include
 PLUGIN_SRC_DIR=./src

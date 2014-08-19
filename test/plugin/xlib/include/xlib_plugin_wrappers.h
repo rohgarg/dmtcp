@@ -1,7 +1,7 @@
 #ifndef _XLIB_PLUGIN_WRAPPERS_H_
 #define _XLIB_PLUGIN_WRAPPERS_H_
 
-#include "dmtcpplugin.h"
+#include "dmtcp.h"
 #include "xlib_plugin_debug.h"
 #include <X11/Xlib.h>
 
