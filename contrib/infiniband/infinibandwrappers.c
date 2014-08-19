@@ -1,20 +1,25 @@
+#define _GNU_SOURCE
+
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
-#include <sys/un.h>
-#include <arpa/inet.h>
-#include <pthread.h>
-/* According to earlier standards */
-#include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
-#include "dmtcpplugin.h"
+#include "dmtcp.h"
 
 #include "ibvctx.h"
 #include "debug.h"
 #include <infiniband/verbs.h>
+
+void *dlopen(const char *filename, int flag) {
+  if (filename) {
+    if (strstr(filename, "libibverbs.so")) {
+      return RTLD_DEFAULT;
+    }
+  }
+  return NEXT_FNC(dlopen)(filename, flag);
+}
 
 int ibv_fork_init(void)
 {
@@ -199,7 +204,7 @@ int ibv_destroy_srq(struct ibv_srq *srq)
   dmtcp_plugin_disable_ckpt();
  // PDEBUG("******** WRAPPER for ibv_destroy_srq\n");
   int rslt = _destroy_srq(srq);
-  dmtcp_plugin_enable_ckpt;
+  dmtcp_plugin_enable_ckpt();
   return rslt;
 }
 
@@ -252,12 +257,12 @@ int ibv_query_qp(struct ibv_qp * qp, struct ibv_qp_attr * attr,
 
 int ibv_get_async_event(struct ibv_context *context, struct ibv_async_event *event)
 {
-  dmtcp_plugin_disable_ckpt();
+//  dmtcp_plugin_disable_ckpt();
 //  PDEBUG("******** WRAPPER FOR ibv_get_async_event\n");
 
   int rslt = _get_async_event(context, event);
 
-  dmtcp_plugin_enable_ckpt();
+//  dmtcp_plugin_enable_ckpt();
   return rslt;
 }
 
@@ -362,7 +367,8 @@ struct ibv_ah * ibv_create_ah(struct ibv_pd *pd, struct ibv_ah_attr *attr){
   dmtcp_plugin_disable_ckpt();
 //  PDEBUG("******** WRAPPER for ibv_create_ah\n");
 
-  _create_ah(pd, attr);
+  struct ibv_ah *rslt = _create_ah(pd, attr);
 
   dmtcp_plugin_enable_ckpt();
+  return rslt;
 }

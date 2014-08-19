@@ -2,79 +2,66 @@
 LN_S=@LN_S@ -f
 MKDIR_P=@MKDIR_P@
 CC=@CC@
+CFLAGS = @CFLAGS@
+CXXFLAGS = @CXXFLAGS@
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
 M32=@M32@
-DEBUG=@DEBUG@
-FAST_RESTART=@FAST_RESTART@
-HBICT_DELTACOMP=@HBICT_DELTACOMP@
-INFINIBAND_SUPPORT=@INFINIBAND_SUPPORT@
-PTRACE_SUPPORT=@PTRACE_SUPPORT@
-RUN_AS_ROOT=@RUN_AS_ROOT@
 HAS_JAVA=@HAS_JAVA@
-HAS_SSH=@HAS_SSH@
 PACKAGE=@PACKAGE_TARNAME@
 PACKAGE_TARNAME=@PACKAGE_TARNAME@-@PACKAGE_VERSION@
 VERSION=@PACKAGE_VERSION@
-CFLAGS = @CFLAGS@
-CPPFLAGS = @CPPFLAGS@
-LDFLAGS = @LDFLAGS@
+
+# Allow the user to specify the install program.
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datarootdir=@datarootdir@
 bindir=@bindir@
 libdir=@libdir@
+pkglibdir = @libdir@/@PACKAGE@
 docdir=@docdir@
 includedir=@includedir@
 mandir=@mandir@
 infodir=@mandir@
-MANPAGES=dmtcp_coordinator.1.gz dmtcp_command.1.gz dmtcp_inspector.1.gz \
-	 dmtcp_launch.1.gz dmtcp_checkpoint.1.gz dmtcp_nocheckpoint.1.gz \
-	 dmtcp_restart.1.gz mtcp.1.gz mtcp_restart.1.gz
-
-MTCP_MAKE_FLAGS = DMTCP_VERSION=$(VERSION) CFLAGS="$(CFLAGS)"\
-		  CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)"
-
-ifeq ($(DEBUG),yes)
-  MTCP_MAKE_FLAGS += CFLAGS_WALL=1
-endif
+top_builddir = @top_builddir@
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+VPATH = @srcdir@
+targetdir = $(top_builddir)
 
 ifeq ($(M32),1)
-  MTCP_MAKE_FLAGS += M32=1
+  targetdir = $(top_builddir)/lib/$(PACKAGE)/32
+  INSTALL_FLAGS = libdir=$(libdir)/$(PACKAGE)/32/lib \
+		  bindir=$(libdir)/$(PACKAGE)/32/bin install-libs
+  UNINSTALL_FLAGS = libdir=$(libdir)/$(PACKAGE)/32/lib \
+		    bindir=$(libdir)/$(PACKAGE)/32/bin uninstall-libs
 else
-  MTCP_MAKE_FLAGS += CC=$(CC)
+  INSTALL_FLAGS = install
+  UNINSTALL_FLAGS = uninstall
 endif
 
-ifeq ($(FAST_RESTART),yes)
-  MTCP_MAKE_FLAGS += FAST_RESTART=1
-endif
+MANPAGES_AUTOGEN=dmtcp_nocheckpoint.1.gz mtcp_restart.1.gz \
+		 dmtcp_ssh.1.gz dmtcp_sshd.1.gz \
+		 dmtcp_discover_rm.1.gz dmtcp_rm_loclaunch.1.gz
 
-ifeq ($(HBICT_DELTACOMP),yes)
-  MTCP_MAKE_FLAGS += HBICT_DELTACOMP=1
-endif
-
-ifeq ($(INFINIBAND_SUPPORT),yes)
-  MTCP_MAKE_FLAGS += INFINIBAND=1
-endif
-
-ifeq ($(PTRACE_SUPPORT),yes)
-  MTCP_MAKE_FLAGS += PTRACE=1
-endif
-
-ifeq ($(RUN_AS_ROOT),yes)
-  MTCP_MAKE_FLAGS += RUN_AS_ROOT=1
-endif
+MANPAGES=dmtcp.1.gz dmtcp_coordinator.1.gz dmtcp_command.1.gz dmtcp_launch.1.gz \
+	 dmtcp_restart.1.gz
 
 # Macros TEST and XTERM_E used on command line by check1, check2, ...:
 #   make TEST=readline XTERM_E="xterm -e" check-readline
 
 default: display-build-env build
 
-build: mtcp dmtcp plugin contrib
-	$(MKDIR_P) bin
-	$(MKDIR_P) lib/dmtcp
-	$(MKDIR_P) include
-	$(MAKE) bin
-	$(MAKE) lib
-	$(MAKE) include
+mkdirs:
+	$(MKDIR_P) $(targetdir)/bin
+	$(MKDIR_P) $(targetdir)/lib/dmtcp
+
+build: mkdirs dmtcp plugin contrib
 
 all: default
 
@@ -82,7 +69,10 @@ display-build-env: display-config display-release
 	@- uname -a
 	@- echo 'Compiler:  ${CC}'
 	@- ${CC} -v 2>&1
-	@- ${LD} -v
+	@- echo 'CFLAGS: ${CFLAGS}'
+	@- echo 'CXXFLAGS: ${CXXFLAGS}'
+	@- echo 'CPPFLAGS: ${CPPFLAGS}'
+	@- echo 'LDFLAGS: ${LDFLAGS}'
 	@- if test "$(HAS_JAVA)" = "yes" ; then \
 	     java -showversion 2>&1 | head -3 ; \
 	   fi
@@ -91,40 +81,30 @@ display-build-env: display-config display-release
 	@ ls -ld /var/*/nscd/* 2> /dev/null || true
 	@ echo ""
 
-display-release: check-m32-compat
+display-release:
 	@ lsb_release -dc 2> /dev/null || \
 	    grep -i SUSE /etc/SuSE-release 2> /dev/null || \
 	    cat /etc/redhat-release 2> /dev/null || true
 	@ cat /etc/debian-version 2> /dev/null && echo '  (Debian)' || true
 	@ cat /etc/rocks-release 2> /dev/null || true
-display-config: check-m32-compat
-	@- echo DMTCP version:\
-	  ${VERSION} \(`grep 'MTCP_VERSION =' mtcp/Makefile`\)
+
+display-config:
+	@- echo DMTCP version: ${VERSION}
 	@- echo Date built: \ \  `date`
 	@- if test -r ./config.log ; then \
 	    echo -n 'config.log: ' ; \
 	    grep '\$$ .*configure ' config.log | sed -e 's^\$$^^'; \
 	   fi
 
-check-m32-compat:
+dmtcp:
 ifeq ($(M32),1)
-	@ (ls /usr/lib64/gcc/x86_64-*/*/32/libstdc++.so > /dev/null || \
-	   ls /usr/lib/gcc/x86_64-*/*/32/libstdc++.so > /dev/null) || \
-	(echo && \
-	 echo DMTCP configured for 32-bit mode on 64-bit machine requested. && \
-	 echo Cannot find libstdc++.so file. \ Will not build. && \
-	 echo Consider installing g++-multilib package \(Debian/Ubuntu\) && \
-	 echo or the equivalent for your Linux distribution. && \
-	 false)
+	cd src && $(MAKE) libs
+else
+	cd src && $(MAKE)
+	cd $(targetdir)/bin && $(LN_S) dmtcp_launch dmtcp_checkpoint
 endif
 
-mtcp: check-m32-compat
-	cd mtcp && $(MAKE) $(MTCP_MAKE_FLAGS) build readmtcp
-
-dmtcp: check-m32-compat mtcp
-	cd dmtcp && $(MAKE)
-
-plugin: dmtcp check-m32-compat
+plugin: dmtcp
 	cd plugin && $(MAKE)
 
 contrib: dmtcp
@@ -141,14 +121,18 @@ tests: build
 LIMIT=ulimit -v 33554432
 
 check: tests
-	@+ if python -c 'print "Python exits."' > /dev/null; then \
-	   bash -c "$(LIMIT) && ./test/autotest.py ${AUTOTEST} $*"; \
+	@ if [ "`id -u`" == "0" ]; then \
+	  echo "'make check' will fail if run as root."; \
+	  exit 1; \
+	fi
+	@ if python -c 'print "Python exits."' > /dev/null; then \
+	  bash -c "$(LIMIT) && $(top_srcdir)/test/autotest.py ${AUTOTEST} $*"; \
 	  else echo '*** No python found in your path.'; echo '*** Please add' \
 	   ' python to path or build Python 2.x for x >= 3.'; \
 	  fi
 
 check-%: tests
-	+bash -c "$(LIMIT) && ./test/autotest.py ${AUTOTEST} '$*'"
+	bash -c "$(LIMIT) && $(top_srcdir)/test/autotest.py ${AUTOTEST} '$*'"
 
 check1: icheck-dmtcp1
 
@@ -170,18 +154,18 @@ icheck-%: tests
 	@ echo "Press <return> when ready to start."
 	@ read -p "> " dummy
 	@ rm -f ckpt_$*_* && sleep 3 && \
-		echo "" && echo "*** Starting Program" && echo "" && \
-		${XTERM_E} $$PWD/bin/dmtcp_launch --join test/$* && \
-		echo "" && echo "*** Restarting Program from Checkpoint" \
-		  "(press q<return> to quit)" && echo "" && \
-		until ls ckpt_$*_*.dmtcp > /dev/null 2>&1; do true; done; \
-		${XTERM_E} $$PWD/bin/dmtcp_restart --join --quiet ckpt_$*_*.dmtcp; \
-		echo "" && echo "*** Again Restarting Program from Checkpoint" \
-		  "(press q<return> to quit)" && echo "" && \
-		until ls ckpt_$*_*.dmtcp > /dev/null 2>&1; do true; done; \
-		${XTERM_E} $$PWD/bin/dmtcp_restart --join --quiet ckpt_$*_*.dmtcp; \
-		&
-	@ bin/dmtcp_coordinator
+	  echo "" && echo "*** Starting Program" && echo "" && \
+	  ${XTERM_E} $(targetdir)/bin/dmtcp_launch --join test/$* && \
+	  echo "" && echo "*** Restarting Program from Checkpoint" \
+	  "(press q<return> to quit)" && echo "" && \
+	  until ls ckpt_$*_*.dmtcp > /dev/null 2>&1; do true; done; \
+	  ${XTERM_E} $(targetdir)/bin/dmtcp_restart --join --quiet ckpt_$*_*.dmtcp; \
+	  echo "" && echo "*** Again Restarting Program from Checkpoint" \
+	  "(press q<return> to quit)" && echo "" && \
+	  until ls ckpt_$*_*.dmtcp > /dev/null 2>&1; do true; done; \
+	  ${XTERM_E} $(targetdir)/bin/dmtcp_restart --join --quiet ckpt_$*_*.dmtcp; \
+	  &
+	@ $(targetdir)/bin/dmtcp_coordinator
 
 tidy:
 	rm -rf dmtcp-autotest-* ckpt_*_files
@@ -190,8 +174,7 @@ tidy:
 	rm -rf ckpt_*
 
 clean: tidy
-	- cd mtcp  && $(MAKE) clean
-	- cd dmtcp && $(MAKE) clean
+	- cd src && $(MAKE) clean
 	- cd plugin && $(MAKE) clean
 	- cd contrib && $(MAKE) clean
 	- cd test  && $(MAKE) clean
@@ -203,30 +186,39 @@ clean: tidy
 	   fi; \
 	 fi; \
 	 rm -rf $$DMTCP_TMPDIR
-	rm -rf include lib bin
+	rm -rf $(targetdir)/lib $(targetdir)/bin
 
 distclean: clean
-	- cd mtcp  && $(MAKE) distclean
-	- cd dmtcp && $(MAKE) distclean
+	- cd src && $(MAKE) distclean
 	- cd plugin && $(MAKE) distclean
 	- cd contrib && $(MAKE) distclean
 	- cd test && $(MAKE) distclean
-	rm -f Makefile test/Makefile test/testconfig.py \
+	rm -f Makefile test/Makefile test/autotest_config.py \
+	  include/config.h include/stamp-h1 \
 	  config.log config.status config.cache
-	rm -rf autom4te.cache dmtcp/autom4te.cache
+	rm -rf autom4te.cache
 
 distsvn:
-	if test "${DISTNAME}"; then \
-	  dirname=${DISTNAME}; \
-	elif test "`svn info`"; then \
-	  dirname=$(PACKAGE)-$(VERSION)+svn`svnversion`; \
+	if test "`svn info`"; then \
+	  dir=$(PACKAGE_TARNAME)+svn`svnversion`; \
 	else \
 	  echo "svn info failed"; exit 1; \
 	fi; \
-	svn export . $$dirname; \
-	tar czf $$dirname.tar.gz $$dirname; \
-	rm -rf $$dirname 2&>/dev/null; \
-	ls -l $$dirname.tar.gz;
+	svn export . $$dir; \
+	tar czf $$dir.tar.gz $$dir; \
+	rm -rf $$dir 2&>/dev/null; \
+	ls -l $$dir.tar.gz;
+
+distgit:
+	if test "`git svn info|grep '^Revision:'|cut -d' ' -f2`"; then \
+	  svnversion="`git svn info|grep '^Revision:'|cut -d' ' -f2`" \
+	  dir=$(PACKAGE_TARNAME)+svn$$svnversion; \
+	else \
+	  echo "git svn info failed"; exit 1; \
+	fi; \
+	git archive --format=tar.gz --prefix=$$dir/ HEAD > $$dir.tar.gz \
+	rm -rf $$dir 2&>/dev/null; \
+	ls -l $$dir.tar.gz;
 
 dist_exclude.txt:
 	if ! test -r dist_exclude.txt; then touch dist_exclude.txt; fi
@@ -238,103 +230,44 @@ dist: distclean dist_exclude.txt
 	    ./`basename $$dir`
 	ls -l ../dmtcp.tgz
 
-bin/dmtcp_checkpoint:
-	cd bin && $(LN_S) dmtcp_launch dmtcp_checkpoint
-
-bin/% : dmtcp/src/%
-	cd bin && $(LN_S) ../$< $*
-
-bin/% : mtcp/%
-	cd bin && $(LN_S) ../$< $*
-
-bin/% : plugin/ipc/%
-	cd bin && $(LN_S) ../$< $*
-
-bin/readdmtcp : mtcp/readmtcp
-	cd bin && $(LN_S) ../$< readdmtcp
-
-bin: 	bin/dmtcp_coordinator bin/dmtcp_command \
-	bin/dmtcp_launch bin/dmtcp_checkpoint bin/dmtcp_nocheckpoint \
-	bin/dmtcp_restart bin/mtcp_restart bin/readdmtcp \
-	bin/dmtcp_ssh bin/dmtcp_sshd
-
-lib/% : mtcp/%
-	cd lib && $(LN_S) ../$< $*
-
-lib/libdmtcpaware.so : dmtcp/src/libdmtcpaware.so.1.0.0
-	cd lib && $(LN_S) ../$< $*
-	cd lib && $(LN_S) libdmtcpaware.so.1.0.0 libdmtcpaware.so.1
-	cd lib && $(LN_S) libdmtcpaware.so.1 libdmtcpaware.so
-
-lib/% : dmtcp/src/%
-	cd lib && $(LN_S) ../$< $*
-
-lib/dmtcp/% : dmtcp/src/%
-	cd lib/dmtcp && $(LN_S) ../../$< $*
-
-lib/dmtcp/libdmtcp_%.so : plugin/%
-	cd lib/dmtcp && $(LN_S) ../../$</$(@F) .
-
-lib/dmtcp/libdmtcp_%.so : contrib/%
-	cd lib/dmtcp && $(LN_S) ../../$</$(@F) .
-
-PLUGINS = lib/dmtcp/libdmtcp_pid.so lib/dmtcp/libdmtcp_ipc.so \
-	  lib/dmtcp/libdmtcp_alloc.so lib/dmtcp/libdmtcp_rm.so
-
-ifeq ($(PTRACE_SUPPORT),yes)
-  PLUGINS += lib/dmtcp/libdmtcp_ptrace.so
+create-dirs:
+	$(INSTALL) -d $(DESTDIR)$(bindir)
+	$(INSTALL) -d $(DESTDIR)$(libdir)
+	$(INSTALL) -d $(DESTDIR)$(pkglibdir)
+ifeq ($(M32),0)
+	$(INSTALL) -d $(DESTDIR)$(includedir)
+	$(INSTALL) -d $(DESTDIR)$(docdir)
+	$(INSTALL) -d $(DESTDIR)$(mandir)/man1
+else
+	$(INSTALL) -d $(DESTDIR)$(libdir)/$(PACKAGE)/32/bin
+	$(INSTALL) -d $(DESTDIR)$(libdir)/$(PACKAGE)/32/lib/$(PACKAGE)
 endif
 
-ifeq ($(INFINIBAND_SUPPORT),yes)
-  PLUGINS += lib/dmtcp/libdmtcp_infiniband.so
+install: all create-dirs
+	cd src && make DESTDIR=$(DESTDIR) $(INSTALL_FLAGS)
+	cd plugin && make DESTDIR=$(DESTDIR) $(INSTALL_FLAGS)
+	cd contrib && make DESTDIR=$(DESTDIR) $(INSTALL_FLAGS)
+ifeq ($(M32),0)
+	${INSTALL_DATA} $(top_srcdir)/QUICK-START $(DESTDIR)$(docdir)
+	${INSTALL_DATA} $(top_srcdir)/COPYING $(DESTDIR)$(docdir)
+	${INSTALL_DATA} $(top_srcdir)/AUTHORS $(DESTDIR)$(docdir)
+	${INSTALL_DATA} $(top_srcdir)/NEWS $(DESTDIR)$(docdir)
+	${INSTALL_DATA} $(top_srcdir)/manpages/*.1.gz $(DESTDIR)$(mandir)/man1
+	(cd $(DESTDIR)$(mandir)/man1; \
+	  for file in ${MANPAGES_AUTOGEN}; do $(LN_S) dmtcp.1.gz $$file; done)
+	(cd $(DESTDIR)$(mandir)/man1; \
+	  $(LN_S) dmtcp_launch.1.gz dmtcp_checkpoint.1.gz)
 endif
-
-lib: 	lib/dmtcp/libdmtcp.so $(PLUGINS) \
-	lib/libdmtcpaware.a lib/libdmtcpaware.so \
-	lib/libmtcp.so.1.0.0 lib/libmtcp.so.1 lib/libmtcp.so
-
-include/% : mtcp/%
-	cd include && $(LN_S) ../$< $*
-
-include/% : dmtcp/src/%
-	cd include && $(LN_S) ../$< $*
-
-include: include/mtcp.h include/dmtcpaware.h
-
-install: all
-	if test -z "$(prefix)"; then \
-	  echo ERROR: prefix must be defined; \
-	  exit 1; \
-	fi
-	test -e $(DESTDIR)$(bindir) || $(MKDIR_P) $(DESTDIR)$(bindir)
-	test -e $(DESTDIR)$(libdir) || $(MKDIR_P) $(DESTDIR)$(libdir)
-	test -e $(DESTDIR)$(includedir) || $(MKDIR_P) $(DESTDIR)$(includedir)
-	test -e $(DESTDIR)$(libdir)/dmtcp || $(MKDIR_P) $(DESTDIR)$(libdir)/dmtcp
-	cd dmtcp && make DESTDIR=$(DESTDIR) install
-	cd plugin && make DESTDIR=$(DESTDIR) install
-	cd contrib && make DESTDIR=$(DESTDIR) install
-	cd mtcp && make DESTDIR=$(DESTDIR) bindir=$(bindir) libdir=$(libdir) \
-	  includedir=$(includedir) install
-	echo "${docdir}" | grep -q /dmtcp || false
-	$(MKDIR_P) $(DESTDIR)$(docdir)/examples
-	cp test/dmtcpaware*.c $(DESTDIR)$(docdir)/examples
-	$(MKDIR_P) $(DESTDIR)$(mandir)/man1
-	cp manpages/dmtcp.1 $(DESTDIR)$(mandir)/man1
-	cd $(DESTDIR)$(mandir)/man1; \
-	  for file in ${MANPAGES}; do $(LN_S) dmtcp.1 $$file; done
 
 uninstall:
-	cd dmtcp && make uninstall
-	cd plugin && make uninstall
-	cd contrib && make uninstall
-	cd mtcp && make DESTDIR=$(DESTDIR) bindir=$(bindir) libdir=$(libdir) \
-	  includedir=$(includedir) uninstall
-	echo "${docdir}" | grep -q /dmtcp || false
+	cd src && make DESTDIR=$(DESTDIR) $(UNINSTALL_FLAGS)
+	cd plugin && make DESTDIR=$(DESTDIR) $(UNINSTALL_FLAGS)
+	cd contrib && make DESTDIR=$(DESTDIR) $(UNINSTALL_FLAGS)
+ifeq ($(M32),0)
 	rm -Rf "$(DESTDIR)$(docdir)"
-	cd $(DESTDIR)$(mandir)/man1 && \
-	  rm -f dmtcp.1 ${MANPAGES}
+	cd $(DESTDIR)$(mandir)/man1 && rm -f ${MANPAGES} ${MANPAGES_AUTOGEN}
+endif
 
-.PHONY: default all check-m32-compat tests \
+.PHONY: default all \
 	display-build-env display-release display-config build \
-	mtcp dmtcp plugin contrib \
-	clean distclean bin dmtcpaware examples dmtcp_noexamples
+	dmtcp plugin contrib clean distclean

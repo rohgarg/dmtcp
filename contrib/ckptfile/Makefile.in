@@ -1,5 +1,4 @@
 PLUGIN=ckptfile
-LIBNAME=libdmtcp_${PLUGIN}.so
 CC = @CC@
 M32=@M32@
 CFLAGS = @CFLAGS@
@@ -7,6 +6,13 @@ CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
 CXXFLAGS = @CXXFLAGS@
 LDFLAGS = @LDFLAGS@
+
+# Allow the user to specify the install program.
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
 MKDIR_P = @MKDIR_P@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -15,7 +21,6 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
-PTRACE_SUPPORT=@PTRACE_SUPPORT@
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 datarootdir=@datarootdir@
@@ -25,12 +30,22 @@ includedir = @includedir@
 infodir = @infodir@
 libdir = @libdir@
 pkglibdir = $(libdir)/@PACKAGE@
+top_builddir = @top_builddir@
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+VPATH = @srcdir@
+targetdir = $(top_builddir)
 
-DMTCP_ROOT=../..
-DMTCP_INCLUDE_PATH = $(DMTCP_ROOT)/dmtcp/include
-JALIB_PATH = $(DMTCP_ROOT)/dmtcp/jalib
+ifeq ($(M32),1)
+  targetdir = $(top_builddir)/lib/$(PACKAGE)/32
+endif
 
-INCLUDES = -I$(JALIB_PATH) -I$(DMTCP_INCLUDE_PATH)
+LIBNAME=$(targetdir)/lib/${PACKAGE}/libdmtcp_${PLUGIN}.so
+
+DMTCP_INCLUDE_PATH = $(top_srcdir)/include
+JALIB_PATH = $(top_srcdir)/jalib
+
+INCLUDES = -I$(JALIB_PATH) -I$(DMTCP_INCLUDE_PATH) -I$(top_builddir)/include
 # NOTE: setting CFLAGS/CXXFLAGS here means setting external values as in
 #  env CFLAGS="-g -O0" make
 # will be ignored.
@@ -47,7 +62,7 @@ LINK = $(CC) $(CFLAGS) $(LDFLAGS) -o $@
 CXXCOMPILE = $(CXX) $(INCLUDES) $(CPPFLAGS) $(CXXFLAGS) -c -o $@
 CXXLINK = $(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@
 
-HEADERS = $(DMTCP_INCLUDE_PATH)/util.h $(DMTCP_INCLUDE_PATH)/dmtcpplugin.h \
+HEADERS = $(DMTCP_INCLUDE_PATH)/util.h $(DMTCP_INCLUDE_PATH)/dmtcp.h \
 	  $(JALIB_PATH)/jassert.h $(JALIB_PATH)/jalloc.h
 
 OBJS = ckptfile.o
@@ -68,22 +83,20 @@ tidy:
 
 clean: tidy
 	-rm -f *.o
-	-rm -f *.so
+	-rm -f $(LIBNAME)
 
 distclean: clean
 	rm -f Makefile
 
-install: all
-	if test -z "$(prefix)"; then \
-	  echo ERROR: prefix must be defined; \
-	  exit 1; \
-	fi
-	test -e $(DESTDIR)$(libdir) || $(MKDIR_P) $(DESTDIR)$(libdir)
-	cp ${LIBNAME} $(DESTDIR)$(pkglibdir)
+install-libs: all
+	${INSTALL_PROGRAM} ${LIBNAME} $(DESTDIR)$(pkglibdir)
 
-uninstall:
-	echo " ( cd '$(DESTDIR)$(pkglibdir)' && rm -f $$files ) "; \
-	cd "$(DESTDIR)$(pkglibdir)" && rm -f $(LIBNAME)
+uninstall-libs:
+	rm -f $(DESTDIR)$(pkglibdir)/$(LIBNAME)
+
+install: install-libs
+
+uninstall: uninstall-libs
 
 ${LIBNAME}: $(OBJS) ${HEADERS}
 	@rm -f ${LIBNAME}

@@ -1,9 +1,9 @@
 /* NOTE: This file must be compiled with -fPIC in order to work properly.
  *
  *       The code in this file will work both with and without DMTCP.
- *       Of course, the dmtcpplugin.h file is needed in both cases.
+ *       Of course, the dmtcp.h file is needed in both cases.
  *
- * These functions are in <DMTCP_ROOT>/lib/dmtcp/libdmtcp.so and dmtcpplugin.h
+ * These functions are in <DMTCP_ROOT>/lib/dmtcp/libdmtcp.so and dmtcp.h
  *   int dmtcpIsEnabled() - returns 1 when running with DMTCP; 0 otherwise.
  *   int dmtcpCheckpoint() - returns DMTCP_AFTER_CHECKPOINT,
  *                                   DMTCP_AFTER_RESTART, or DMTCP_NOT_PRESENT.
@@ -22,15 +22,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "dmtcpplugin.h"
+#include "dmtcp.h"
 ;
 int main() {
-    if ( ! dmtcpIsEnabled() ) {
+    if ( ! dmtcp_is_enabled() ) {
       printf("\n *** dmtcpIsEnabled: executable seems to not be running"
-             " under dmtcp_checkpoint.\n");
+             " under dmtcp_launch.\n");
     }
 
-    int retval = dmtcpDelayCheckpointsLock();
+    int retval = dmtcp_disable_ckpt();
     if (retval == DMTCP_NOT_PRESENT) {
       printf("\n *** dmtcpDelayCheckpointsLock: DMTCP_NOT_PRESENT."
              "  Will exit.\n");
@@ -44,7 +44,7 @@ int main() {
     printf("*** dmtcpDelayCheckpointsUnlock: Will now unblock checkpointing\n"
            "      and write ./dmtcp_restart_script.sh.\n");
     printf("*** Execute ./dmtcp_restart_script.sh to restart from here.\n");
-    dmtcpDelayCheckpointsUnlock();
+    dmtcp_enable_ckpt();
     sleep(2); // Wait long enough for checkpoint to be written.
 
     printf("\n*** Process done executing.  Successfully exiting.\n");
