@@ -1,5 +1,6 @@
 #include <iostream>
 #include "xlib_plugin_virtualization.h"
+#include "xlib_plugin_wrappers.h"
 
 using namespace std;
 
@@ -14,6 +15,11 @@ void XlibVirtualization::init()
 void XlibVirtualization::save_func_and_params(string p_func_call)
 {
   g_func_calls_log_buff.push_back(p_func_call);
+}
+
+const vector<string>& XlibVirtualization::get_xlib_calls_log()
+{
+  return g_func_calls_log_buff;
 }
 
 /****************************/
@@ -330,6 +336,42 @@ int XlibVirtualization::remove_xim(XIM p_virt_xim)
 int XlibVirtualization::remove_ximg(XImage* p_virt_ximg)
 {
   return ximg_virtual_table.erase(virtual_to_real_ximg(p_virt_ximg));
+}
+
+void XlibVirtualization::update_display_mapping(Display *p_virt_dp, Display *p_real_dp)
+{
+  display_virtual_table[p_real_dp] = p_virt_dp;
+}
+
+void XlibVirtualization::update_window_mapping(Window p_virt_win, Window p_real_win)
+{
+  window_virtual_table[p_real_win] = p_virt_win;
+}
+
+void XlibVirtualization::update_gc_mapping(GC p_virt_gc, GC p_real_gc)
+{
+  gc_virtual_table[p_real_gc] = p_virt_gc;
+}
+
+void XlibVirtualization::close_connection()
+{
+  map<Window, Window>::iterator itw;
+  map<Display*, Display*>::iterator it;
+
+  Display *l_real_dp = display_virtual_table.begin()->first;
+  for (itw = window_virtual_table.begin(); itw != window_virtual_table.end(); itw++)
+  {
+    Window l_real_win = itw->first;
+    if (l_real_win != RootWindow(l_real_dp, 0)) {
+      _real_XDestroyWindow(l_real_dp, l_real_win);
+    }
+  }
+
+  for (it = display_virtual_table.begin(); it != display_virtual_table.end(); it++)
+  {
+    l_real_dp = it->first;
+    _real_XCloseDisplay(l_real_dp);
+  }
 }
 
 /***********************/

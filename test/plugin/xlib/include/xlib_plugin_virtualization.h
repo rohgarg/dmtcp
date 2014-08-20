@@ -48,6 +48,7 @@ class XlibVirtualization
 
   public:
     void save_func_and_params(string /* p_func_call */);
+    const vector<string>& get_xlib_calls_log();
 
     /* Virtualization functions */
     Display* virtual_to_real_display_pointer(Display* /* p_virt_dp */);
@@ -89,6 +90,11 @@ class XlibVirtualization
     int remove_cursor(Cursor /* p_virt_cursor */);
     int remove_xim(XIM /* p_virt_xim */);
     int remove_ximg(XImage* /* p_virt_ximg */);
+    void update_display_mapping(Display* /* p_virt_dp */, Display* /* p_real_dp */);
+    void update_window_mapping(Window /* p_virt_win */, Window /* p_real_win */);
+    void update_gc_mapping(GC /* p_virt_gc */, GC /* p_real_gc */);
+
+    void close_connection();
 
     /* Getters and Setters */
     void set_virtual_gc(GC /* p_virt_gc */);

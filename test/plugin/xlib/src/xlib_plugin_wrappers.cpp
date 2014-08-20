@@ -130,11 +130,11 @@ void *dlopen(const char *filename, int flag)
 extern "C" Display *XOpenDisplay(_Xconst char* display_name) {
   DPRINTF("XOpenDisplay()\n");
   Display *l_real_dp = _real_XOpenDisplay(display_name);
-  XLIB_VIRT_CALL_FUNC.save_display(l_real_dp);
+  Display *l_virt_dp = XLIB_VIRT_CALL_FUNC.save_display(l_real_dp);
   std::ostringstream funcCall;
-  funcCall << "XOpenDisplay(" << display_name << ")";
+  funcCall << "XOpenDisplay(" << l_virt_dp << "," << display_name << ")";
   XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
-  return XLIB_VIRT_CALL_FUNC.real_to_virtual_display_pointer(l_real_dp);
+  return l_virt_dp;
 }
 
 extern "C" void XrmInitialize(void) {
@@ -303,10 +303,11 @@ extern "C" GC XCreateGC(Display* display, Drawable d, unsigned long valuemask, X
     memcpy(l_values_buff, values, sizeof(l_values_buff));
   }
   std::ostringstream funcCall;
-  funcCall << "XCreateGC(" << (void*)display << "," << d << "," << valuemask << "," << (void*)l_values_buff << ")";
-  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
   GC l_real_gc = _real_XCreateGC(l_real_dp,l_real_d,valuemask,l_values_buff);
-  return XLIB_VIRT_CALL_FUNC.save_gc(l_real_gc);
+  GC l_virt_gc =  XLIB_VIRT_CALL_FUNC.save_gc(l_real_gc);
+  funcCall << "XCreateGC(" << l_virt_gc << "," << (void*)display << "," << d << "," << valuemask << "," << (void*)l_values_buff << ")";
+  XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
+  return l_virt_gc;
 }
 
 extern "C" GContext XGContextFromGC(GC gc ) {
@@ -374,11 +375,11 @@ extern "C" Window XCreateSimpleWindow(Display* display, Window parent, int x, in
     l_real_parent = parent;
   }
   Window l_real_win = _real_XCreateSimpleWindow(l_real_dp, l_real_parent, x, y, width, height, border_width, border, background);
-  XLIB_VIRT_CALL_FUNC.save_window(l_real_win);
+  Window l_virt_win = XLIB_VIRT_CALL_FUNC.save_window(l_real_win);
   std::ostringstream funcCall;
-  funcCall << "XCreateSimpleWindow(" << (void*)display << "," << l_virt_parent << "," << x << "," << y << "," << width << "," << height << "," << border_width << "," << border << "," << background << ")";
+  funcCall << "XCreateSimpleWindow(" << l_virt_win << ", " << (void*)display << "," << l_virt_parent << "," << x << "," << y << "," << width << "," << height << "," << border_width << "," << border << "," << background << ")";
   XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
-  return XLIB_VIRT_CALL_FUNC.real_to_virtual_window(l_real_win);
+  return l_virt_win;
 }
 
 extern "C" Window XGetSelectionOwner(Display* display ,Atom selection ) {

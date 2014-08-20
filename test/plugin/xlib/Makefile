@@ -68,6 +68,11 @@ check: ${PLUGIN_OBJ_DIR} ${LIBNAME}.so ${PLUGIN_TEST_DIR}/Xlib_Beginner/Xlib_Beg
 	${DMTCP_ROOT}/bin/dmtcp_launch --port ${DEMO_PORT}  \
 	  --with-plugin $$PWD/${LIBNAME}.so ${PLUGIN_TEST_DIR}/Xlib_Beginner/Xlib_Beginner
 
+gdb: ${PLUGIN_OBJ_DIR} ${LIBNAME}.so ${PLUGIN_TEST_DIR}/Xlib_Beginner/Xlib_Beginner
+	# Note that full path of plugin (using $$PWD in this case) is required.
+	gdb --args ${DMTCP_ROOT}/bin/dmtcp_launch \
+	  --with-plugin $$PWD/${LIBNAME}.so ${PLUGIN_TEST_DIR}/Xlib_Beginner/Xlib_Beginner
+
 check-glx: ${PLUGIN_OBJ_DIR} ${LIBNAME}.so ${PLUGIN_TEST_DIR}/glx-test/glx-test
 	# Note that full path of plugin (using $$PWD in this case) is required.
 	${DMTCP_ROOT}/bin/dmtcp_launch --port ${DEMO_PORT}  \
