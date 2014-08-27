@@ -132,7 +132,7 @@ extern "C" Display *XOpenDisplay(_Xconst char* display_name) {
   Display *l_real_dp = _real_XOpenDisplay(display_name);
   Display *l_virt_dp = XLIB_VIRT_CALL_FUNC.save_display(l_real_dp);
   std::ostringstream funcCall;
-  funcCall << "XOpenDisplay(" << l_virt_dp << "," << display_name << ")";
+  funcCall << "XOpenDisplay(" << l_virt_dp << "," << (void*)display_name << ")";
   XLIB_VIRT_SAVE_FUNC_CALL(funcCall.str());
   return l_virt_dp;
 }
