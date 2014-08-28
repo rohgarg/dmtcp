@@ -157,9 +157,26 @@ static void execute_xcall(string xcall_name, vector<string> xcall_params)
     Drawable l_real_d = XLIB_VIRT_CALL_FUNC.virtual_to_real_drawable(l_virt_d);
     GC l_real_gc = _real_XCreateGC(l_real_dp, l_real_d, valuemask, (XGCValues*)l_values_buff);
     XLIB_VIRT_CALL_FUNC.update_gc_mapping((GC)l_virt_gc, l_real_gc);
-  } else if (xcall_name == "") {
-  } else if (xcall_name == "") {
-  } else if (xcall_name == "") {
+  } else if (xcall_name == "XAllocColor") {
+    void *l_virt_dp = string_to_given_type<void*>(xcall_params[0]);
+    Colormap cmp = string_to_given_type<Colormap>(xcall_params[1]);
+    void *xcolor = string_to_given_type<void*>(xcall_params[2]);
+    Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer((Display*)l_virt_dp);
+    _real_XAllocColor(l_real_dp, cmp, (XColor*)xcolor);
+  } else if (xcall_name == "XSetForeground") {
+    void *l_virt_dp = string_to_given_type<void*>(xcall_params[0]);
+    Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer((Display*)l_virt_dp);
+    void *l_virt_gc = string_to_given_type<void*>(xcall_params[1]);
+    GC l_real_gc = XLIB_VIRT_CALL_FUNC.virtual_to_real_gc((GC)l_virt_gc);
+    unsigned long frg = string_to_given_type<unsigned long>(xcall_params[2]);
+    _real_XSetForeground(l_real_dp, l_real_gc, frg);
+  } else if (xcall_name == "XSelectInput") {
+    void *l_virt_dp = string_to_given_type<void*>(xcall_params[0]);
+    Window l_virt_win = string_to_given_type<Window>(xcall_params[1]);
+    Display *l_real_dp = XLIB_VIRT_CALL_FUNC.virtual_to_real_display_pointer((Display*)l_virt_dp);
+    Window l_real_win = XLIB_VIRT_CALL_FUNC.virtual_to_real_window(l_virt_win);
+    long mask = string_to_given_type<long>(xcall_params[2]);
+    _real_XSelectInput(l_real_dp, l_real_win, mask);
   } else if (xcall_name == "") {
   } else if (xcall_name == "") {
   } else {
