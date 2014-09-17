@@ -231,7 +231,7 @@ MTCP_PRINTF("Attach for debugging.");
   if (rinfo.fd != -1) {
     mtcp_readfile(rinfo.fd, &mtcpHdr, sizeof mtcpHdr);
   } else {
-    rinfo.fd = mtcp_sys_open2("./ckpt_dmtcp1_test.dmtcp", O_RDONLY);
+    rinfo.fd = mtcp_sys_open2(ckptImage, O_RDONLY);
     if (rinfo.fd == -1) {
       MTCP_PRINTF("***ERROR opening ckpt image (%s): %d\n",
                   ckptImage, mtcp_sys_errno);
