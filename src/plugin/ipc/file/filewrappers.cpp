@@ -29,6 +29,8 @@
  *
  * Also, on some machines (e.g. SLES 10), readlink has conflicting return types
  * (ssize_t and int).
+ *     In general, we rename the functions below, since any type declarations
+ * may vary on different systems, and so we ignore these type declarations.
 */
 #define ptsname_r ptsname_r_always_inline
 #define ttyname_r ttyname_r_always_inline
@@ -58,6 +60,16 @@
 #include <linux/version.h>
 #include <limits.h>
 
+#undef ptsname_r
+#undef ttyname_r
+#undef open
+#undef open64
+#undef openat
+#undef openat64
+#undef readlink
+#undef __readlink_chk
+#undef realpath
+
 #include "dmtcp.h"
 #include "shareddata.h"
 #include "util.h"
@@ -68,16 +80,6 @@
 #include "fileconnlist.h"
 #include "fileconnection.h"
 #include "filewrappers.h"
-
-#undef ptsname_r
-#undef ttyname_r
-#undef open
-#undef open64
-#undef openat
-#undef openat64
-#undef readlink
-#undef __readlink_chk
-#undef realpath
 
 using namespace dmtcp;
 #if 0
@@ -141,7 +143,7 @@ extern "C" int dup(int oldfd)
   DMTCP_PLUGIN_DISABLE_CKPT();
   int newfd = _real_dup(oldfd);
   if (newfd != -1 && dmtcp_is_running_state()) {
-    dmtcp::FileConnList::instance().processDup(oldfd, newfd);
+    FileConnList::instance().processDup(oldfd, newfd);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return newfd;
@@ -152,7 +154,7 @@ extern "C" int dup2(int oldfd, int newfd)
   DMTCP_PLUGIN_DISABLE_CKPT();
   int res = _real_dup2(oldfd, newfd);
   if (res != -1 && newfd != oldfd && dmtcp_is_running_state()) {
-    dmtcp::FileConnList::instance().processDup(oldfd, newfd);
+    FileConnList::instance().processDup(oldfd, newfd);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return newfd;
@@ -165,7 +167,7 @@ extern "C" int dup3(int oldfd, int newfd, int flags)
   DMTCP_PLUGIN_DISABLE_CKPT();
   int res = _real_dup3(oldfd, newfd, flags);
   if (res != -1 && newfd != oldfd && dmtcp_is_running_state()) {
-    dmtcp::FileConnList::instance().processDup(oldfd, newfd);
+    FileConnList::instance().processDup(oldfd, newfd);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return newfd;
@@ -177,10 +179,10 @@ static int ptsname_r_work(int fd, char * buf, size_t buflen)
 {
   JTRACE("Calling ptsname_r");
 
-  dmtcp::Connection* c = dmtcp::FileConnList::instance().getConnection(fd);
-  dmtcp::PtyConnection* ptyCon =(dmtcp::PtyConnection*) c;
+  Connection* c = FileConnList::instance().getConnection(fd);
+  PtyConnection* ptyCon =(PtyConnection*) c;
 
-  dmtcp::string virtPtsName = ptyCon->virtPtsName();
+  string virtPtsName = ptyCon->virtPtsName();
 
   JTRACE("ptsname_r") (virtPtsName);
 
@@ -242,10 +244,10 @@ extern "C" int ttyname_r(int fd, char *buf, size_t buflen)
   int ret = _real_ttyname_r(fd, tmpbuf, sizeof(tmpbuf));
 
   if (ret == 0 && strcmp(tmpbuf, "/dev/tty") != 0) {
-    Connection* c = dmtcp::FileConnList::instance().getConnection(fd);
+    Connection* c = FileConnList::instance().getConnection(fd);
     JASSERT(c != NULL) (fd) (tmpbuf);
-    dmtcp::PtyConnection* ptyCon =(dmtcp::PtyConnection*) c;
-    dmtcp::string virtPtsName = ptyCon->virtPtsName();
+    PtyConnection* ptyCon =(PtyConnection*) c;
+    string virtPtsName = ptyCon->virtPtsName();
 
     if (virtPtsName.length() >= buflen) {
       JWARNING(false) (virtPtsName) (virtPtsName.length()) (buflen)
@@ -363,8 +365,8 @@ static int _open_open64_work(int(*fn) (const char *path, int flags, ...),
 
   DMTCP_PLUGIN_DISABLE_CKPT();
 
-  if (dmtcp::Util::strStartsWith(path, VIRT_PTS_PREFIX_STR)) {
-    dmtcp::SharedData::getRealPtyName(path, currPtsDevName,
+  if (Util::strStartsWith(path, VIRT_PTS_PREFIX_STR)) {
+    SharedData::getRealPtyName(path, currPtsDevName,
                                       sizeof(currPtsDevName));
     newpath = currPtsDevName;
   }
@@ -446,8 +448,8 @@ static FILE *_fopen_fopen64_work(FILE*(*fn) (const char *path, const char *mode)
 
   DMTCP_PLUGIN_DISABLE_CKPT();
 
-  if (dmtcp::Util::strStartsWith(path, VIRT_PTS_PREFIX_STR)) {
-    dmtcp::SharedData::getRealPtyName(path, currPtsDevName,
+  if (Util::strStartsWith(path, VIRT_PTS_PREFIX_STR)) {
+    SharedData::getRealPtyName(path, currPtsDevName,
                                       sizeof(currPtsDevName));
     newpath = currPtsDevName;
   }
@@ -480,8 +482,8 @@ extern "C" FILE *freopen(const char *path, const char *mode, FILE *stream)
 
   DMTCP_PLUGIN_DISABLE_CKPT();
 
-  if (dmtcp::Util::strStartsWith(path, VIRT_PTS_PREFIX_STR)) {
-    dmtcp::SharedData::getRealPtyName(path, currPtsDevName,
+  if (Util::strStartsWith(path, VIRT_PTS_PREFIX_STR)) {
+    SharedData::getRealPtyName(path, currPtsDevName,
                                       sizeof(currPtsDevName));
     newpath = currPtsDevName;
   }
@@ -506,8 +508,8 @@ extern "C" int openat(int dirfd, const char *path, int flags, ...)
   DMTCP_PLUGIN_DISABLE_CKPT();
   int fd = _real_openat(dirfd, path, flags, mode);
   if (fd >= 0 && dmtcp_is_running_state()) {
-    dmtcp::string procpath = "/proc/self/fd/" + jalib::XToString(fd);
-    dmtcp::string device = jalib::Filesystem::ResolveSymlink(procpath);
+    string procpath = "/proc/self/fd/" + jalib::XToString(fd);
+    string device = jalib::Filesystem::ResolveSymlink(procpath);
     FileConnList::instance().processFileConnection(fd, device.c_str(),
                                                      flags, mode);
   }
@@ -534,8 +536,8 @@ extern "C" int openat64(int dirfd, const char *path, int flags, ...)
   DMTCP_PLUGIN_DISABLE_CKPT();
   int fd = _real_openat64(dirfd, path, flags, mode);
   if (fd >= 0 && dmtcp_is_running_state()) {
-    dmtcp::string procpath = "/proc/self/fd/" + jalib::XToString(fd);
-    dmtcp::string device = jalib::Filesystem::ResolveSymlink(procpath);
+    string procpath = "/proc/self/fd/" + jalib::XToString(fd);
+    string device = jalib::Filesystem::ResolveSymlink(procpath);
     FileConnList::instance().processFileConnection(fd, device.c_str(),
                                                      flags, mode);
   }
@@ -566,9 +568,9 @@ extern "C" DIR *opendir(const char *name)
 
 static void updateStatPath(const char *path, char **newpath)
 {
-  if (dmtcp::Util::strStartsWith(path, VIRT_PTS_PREFIX_STR)) {
+  if (Util::strStartsWith(path, VIRT_PTS_PREFIX_STR)) {
     char currPtsDevName[32];
-    dmtcp::SharedData::getRealPtyName(path, currPtsDevName,
+    SharedData::getRealPtyName(path, currPtsDevName,
                                       sizeof(currPtsDevName));
     strcpy(*newpath, currPtsDevName);
   } else {
@@ -684,7 +686,7 @@ extern "C" int fcntl(int fd, int cmd, ...)
       (cmd == F_DUPFD) &&
 #endif
       dmtcp_is_running_state()) {
-    dmtcp::FileConnList::instance().processDup(fd, res);
+    FileConnList::instance().processDup(fd, res);
   }
 
   DMTCP_PLUGIN_ENABLE_CKPT();

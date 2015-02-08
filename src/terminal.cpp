@@ -27,6 +27,13 @@ void dmtcp_Terminal_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data)
     case DMTCP_EVENT_THREADS_RESUME:
       if (data->resumeInfo.isRestart) {
         restore_term_settings();
+        /* If MTCP_RESTART_PAUSE2 set, sleep 15 seconds and allow gdb attach. */
+        if (getenv("MTCP_RESTART_PAUSE2")) {
+          struct timespec delay = {15, 0}; /* 15 seconds */
+          printf("Pausing 15 seconds. Do:  gdb <PROGNAME> %d\n",
+          dmtcp_virtual_to_real_pid(getpid()));
+          nanosleep(&delay, NULL);
+        }
       }
       break;
 
@@ -94,6 +101,18 @@ static void restore_term_settings()
         .Text(":skip restore terminal step -- we are in BACKGROUND");
     }
   }
+  /*
+   * NOTE:
+   * Apache, when running in debug mode (-X), uses SIGWINCH
+   * as a signal for stopping gracefully. Please comment out
+   * the next line to prevent DMTCP from sending a SIGWINCH
+   * on restart when testing with Apache.
+   *
+   * TODO:
+   * This should be done automatically by wrapping it in an ifdef
+   * or if condition that disables the SIGWINCH using configure or
+   * a runtime option (--no-sigwinch).
+   */
   if (kill(getpid(), SIGWINCH) == -1) {}  /* No remedy if error */
 }
 

@@ -20,17 +20,19 @@
  ****************************************************************************/
 
 // msgrcv has confliciting return types on some systems (e.g. SLES 10)
+// So, we temporarily rename it so that type declarations are not for msgrcv.
 #define msgrcv msgrcv_glibc
 
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <stdarg.h>
+
+#undef msgrcv
+
 #include "dmtcp.h"
 #include "sysvipc.h"
 #include "sysvipcwrappers.h"
 #include "jassert.h"
-
-#undef msgrcv
 
 using namespace dmtcp;
 
@@ -49,7 +51,7 @@ int shmget(key_t key, size_t size, int shmflg)
   DMTCP_PLUGIN_DISABLE_CKPT();
   realId = _real_shmget(key, size, shmflg);
   if (realId != -1) {
-    dmtcp::SysVShm::instance().on_shmget(realId, key, size, shmflg);
+    SysVShm::instance().on_shmget(realId, key, size, shmflg);
     virtId = REAL_TO_VIRTUAL_SHM_ID(realId);
     JTRACE ("Creating new Shared memory segment")
       (key) (size) (shmflg) (realId) (virtId);
@@ -92,10 +94,12 @@ void *shmat(int shmid, const void *shmaddr, int shmflg)
       (shmaddr) (shmflg) (getpid())
       .Text ("Failed to get SHMLBA-aligned address after 20 tries");
   }
+#elif defined(__aarch64__)
+# warning "TODO: Implementation for ARM64."
 #endif
 
   if (ret != (void *) -1) {
-    dmtcp::SysVShm::instance().on_shmat(shmid, shmaddr, shmflg, ret);
+    SysVShm::instance().on_shmat(shmid, shmaddr, shmflg, ret);
     JTRACE ("Mapping Shared memory segment") (shmid) (realShmid) (shmflg) (ret);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
@@ -108,7 +112,7 @@ int shmdt(const void *shmaddr)
   DMTCP_PLUGIN_DISABLE_CKPT();
   int ret = _real_shmdt(shmaddr);
   if (ret != -1) {
-    dmtcp::SysVShm::instance().on_shmdt(shmaddr);
+    SysVShm::instance().on_shmdt(shmaddr);
     JTRACE ("Unmapping Shared memory segment" ) (shmaddr);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
@@ -140,7 +144,7 @@ int semget(key_t key, int nsems, int semflg)
   DMTCP_PLUGIN_DISABLE_CKPT();
   realId = _real_semget (key, nsems, semflg);
   if (realId != -1) {
-    dmtcp::SysVSem::instance().on_semget(realId, key, nsems, semflg);
+    SysVSem::instance().on_semget(realId, key, nsems, semflg);
     virtId = REAL_TO_VIRTUAL_SEM_ID(realId);
     JTRACE ("Creating new SysV Semaphore" ) (key) (nsems) (semflg);
   }
@@ -177,7 +181,7 @@ int semtimedop(int semid, struct sembuf *sops, size_t nsops,
     JASSERT(realId != -1);
     ret = _real_semtimedop(realId, sops, nsops, timeout);
     if (ret == 0) {
-      dmtcp::SysVSem::instance().on_semop(semid, sops, nsops);
+      SysVSem::instance().on_semop(semid, sops, nsops);
     }
     DMTCP_PLUGIN_ENABLE_CKPT();
     return ret;
@@ -194,7 +198,7 @@ int semtimedop(int semid, struct sembuf *sops, size_t nsops,
     JASSERT(realId != -1);
     ret = _real_semtimedop(realId, sops, nsops, &ts_100ms);
     if (ret == 0) {
-      dmtcp::SysVSem::instance().on_semop(semid, sops, nsops);
+      SysVSem::instance().on_semop(semid, sops, nsops);
     }
     DMTCP_PLUGIN_ENABLE_CKPT();
 
@@ -224,7 +228,7 @@ int semctl(int semid, int semnum, int cmd, ...)
   JASSERT(realId != -1);
   int ret = _real_semctl(realId, semnum, cmd, uarg);
   if (ret != -1) {
-    dmtcp::SysVSem::instance().on_semctl(semid, semnum, cmd, uarg);
+    SysVSem::instance().on_semctl(semid, semnum, cmd, uarg);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return ret;
@@ -243,7 +247,7 @@ int msgget(key_t key, int msgflg)
   DMTCP_PLUGIN_DISABLE_CKPT();
   realId = _real_msgget (key, msgflg);
   if (realId != -1) {
-    dmtcp::SysVMsq::instance().on_msgget(realId, key, msgflg);
+    SysVMsq::instance().on_msgget(realId, key, msgflg);
     virtId = REAL_TO_VIRTUAL_MSQ_ID(realId);
     JTRACE ("Creating new SysV Msg Queue" ) (key) (msgflg);
   }
@@ -268,7 +272,7 @@ int msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg)
     JASSERT(realId != -1);
     ret = _real_msgsnd(realId, msgp, msgsz, msgflg | IPC_NOWAIT);
     if (ret == 0) {
-      dmtcp::SysVMsq::instance().on_msgsnd(msqid, msgp, msgsz, msgflg);
+      SysVMsq::instance().on_msgsnd(msqid, msgp, msgsz, msgflg);
     }
     DMTCP_PLUGIN_ENABLE_CKPT();
 
@@ -302,7 +306,7 @@ ssize_t msgrcv(int msqid, void *msgp, size_t msgsz, long msgtyp, int msgflg)
     JASSERT(realId != -1);
     ret = _real_msgrcv(realId, msgp, msgsz, msgtyp, msgflg | IPC_NOWAIT);
     if (ret == 0) {
-      dmtcp::SysVMsq::instance().on_msgrcv(msqid, msgp, msgsz, msgtyp, msgflg);
+      SysVMsq::instance().on_msgrcv(msqid, msgp, msgsz, msgtyp, msgflg);
     }
     DMTCP_PLUGIN_ENABLE_CKPT();
 
@@ -328,7 +332,7 @@ int msgctl(int msqid, int cmd, struct msqid_ds *buf)
   JASSERT(realId != -1);
   int ret = _real_msgctl(realId, cmd, buf);
   if (ret != -1) {
-    dmtcp::SysVMsq::instance().on_msgctl(msqid, cmd, buf);
+    SysVMsq::instance().on_msgctl(msqid, cmd, buf);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return ret;

@@ -66,7 +66,7 @@ DEFAULT_S=0.3
 if uname_p[0:3] == 'arm':
   DEFAULT_S *= 2
 #Allow extra time for slower CPUs
-if uname_m in ["i386", "i486", "i586", "i686", "armv7", "armv71"]:
+if uname_m in ["i386", "i486", "i586", "i686", "armv7", "armv71", "aarch64"]:
   DEFAULT_S *= 4
 
 S=DEFAULT_S
@@ -385,16 +385,21 @@ def getStatus():
 
   while True:
     try:
-      line=coordinator.stdout.readline()
+      line=coordinator.stdout.readline().strip()
       if not line:  # Immediate empty string on stdout means EOF
         CHECK(False, "coordinator died unexpectedly")
         return (-1, False)
-      line=line.strip()
-      if line=="Status...":
-        break;
-      if VERBOSE:
-        print "Ignoring line from coordinator: ", line
-        sleep(1)
+
+      m = re.search('NUM_PEERS=(\d+)', line)
+      if m != None:
+        peers = int(m.group(1))
+        continue
+
+      m = re.search('RUNNING=(\w+)', line)
+      if m != None:
+        running = m.group(1)
+        break
+
     except IOError, (errno, strerror):
       if coordinator.poll():
         if coordinator.poll() < 0:
@@ -405,14 +410,10 @@ def getStatus():
         continue
       raise CheckFailed("I/O error(%s): %s" % (errno, strerror))
 
-  x,peers=coordinator.stdout.readline().strip().split("=")
-  CHECK(x=="NUM_PEERS", "reading coordinator status")
-  x,running=coordinator.stdout.readline().strip().split("=")
-  CHECK(x=="RUNNING", "reading coordinator status")
-
   if VERBOSE:
-    print "STATUS: peers=%s, running=%s" % (peers,running)
-  return (int(peers), (running=="yes"))
+    print "STATUS: peers=%d, running=%s" % (peers,running)
+
+  return (peers, (running=="yes"))
 
 #delete all files in ckptDir
 def clearCkptDir():
@@ -786,7 +787,8 @@ elif TEST_POSIX_MQ == "yes":
 runTest("pty2",   2, ["./test/pty2"])
 
 #Invoke this test when support for timers is added to DMTCP.
-runTest("timer",   1, ["./test/timer"])
+runTest("timer1",   1, ["./test/timer1"])
+runTest("timer2",   1, ["./test/timer2"])
 runTest("clock",   1, ["./test/clock"])
 
 old_ld_library_path = os.getenv("LD_LIBRARY_PATH")
@@ -805,6 +807,7 @@ if old_ld_library_path:
 else:
   del os.environ['LD_LIBRARY_PATH']
 
+runTest("realpath",        1, ["./test/realpath"])
 runTest("pthread1",      1, ["./test/pthread1"])
 runTest("pthread2",      1, ["./test/pthread2"])
 S=10*DEFAULT_S

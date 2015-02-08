@@ -32,8 +32,13 @@
 #include "jconvert.h"
 #include "jalib.h"
 #include "dmtcp.h"
-// DMTCP config constants like ELF_INTERPRETER
-#include "config.h"
+
+#ifdef __aarch64__
+// FIXME:  We should use SYS_getdents64, and not SYS_getdents for all arch's.
+// SYS_getdents not supported in aarch64.
+# undef SYS_getdents
+# define SYS_getdents SYS_getdents64
+#endif
 
 namespace
 {
@@ -165,7 +170,8 @@ jalib::string jalib::Filesystem::GetProgramName()
     value = BaseName ( GetProgramPath() ); // uses /proc/self/exe
     // We may rewrite "a.out" to "/lib/ld-linux.so.2 a.out".  If so, find cmd.
     if (!value.empty()
-        && value == ResolveSymlink(ELF_INTERPRETER) // e.g. /lib/ld-linux.so.2
+        && elfInterpreter != NULL
+        && value == ResolveSymlink(elfInterpreter) // e.g. /lib/ld-linux.so.2
 	&& (len = _GetProgramCmdline(cmdline, sizeof(cmdline))) > 0
 	&& len > strlen(cmdline) + 1 // more than one word in cmdline
 	&& *(cmdline + strlen(cmdline) + 1) != '-') // second word not a flag
@@ -218,79 +224,6 @@ bool jalib::Filesystem::FileExists ( const jalib::string& str )
   }else {
     return false;
   }
-}
-
-jalib::string jalib::Filesystem::FindHelperUtility(const jalib::string& file,
-                                                   bool is32bit /*= false*/)
-{
-  const char* d = NULL;
-  // search relative to dir of dmtcp_launch
-  // (intended for private install by end user)
-  const char *p1[] = {
-    "/",
-    "/../lib64/dmtcp/",
-    "/../lib/dmtcp/",
-  };
-  // FIXME: remove /.../lib{,64}/dmtcp/ above, & modify Makefile.in:(un)install
-
-  // Search in standard path, and if we fail, in our current and parent dir
-  // (intended for system-wide install by end user)
-  const char *p2[] = {
-    "/usr/local/bin/",
-    "/usr/bin/",
-    "/bin/",
-    "/usr/local/lib64/dmtcp/",
-    "/usr/lib64/dmtcp/",
-    "/lib64/dmtcp",
-    "/usr/local/lib/dmtcp/",
-    "/usr/lib/dmtcp/",
-    "/lib/dmtcp/"
-  };
-
-  dmtcp::string suffixFor32Bits = "";
-  if (is32bit) {
-    jalib::string basename = BaseName(file);
-    if (file == "mtcp_restart-32") {
-      suffixFor32Bits = "32/bin/";
-    } else {
-      suffixFor32Bits = "32/lib/dmtcp/";
-    }
-  }
-  jalib::string pth;
-  jalib::string udir;
-  size_t i = 0;
-  // 1. Search relative to JALIB_UTILITY_DIR (using p1).
-  //    Note that this is needed, since program dir may refer to target app's
-  //    program dir instead of dir of dmtcp_launch.
-  if ( ( d=getenv ( "JALIB_UTILITY_DIR" ) ) != NULL ) {
-    JTRACE("JALIB_UTILITY_DIR was set:  using it");
-    udir = d;
-    for (i = 0; i < sizeof(p1) / sizeof(char*); i++) {
-      pth = udir + p1[i] + suffixFor32Bits + file;
-      if (FileExists(pth)) {
-        return pth;
-      }
-    }
-  }
-
-  // 2. Search relative to dir of this command (dmtcp_launch), (using p1).
-  udir = GetProgramDir();
-  for (i = 0; i < sizeof(p1) / sizeof(char*); i++) {
-    pth = udir + p1[i] + suffixFor32Bits + file;
-    if (FileExists(pth)) {
-      return pth;
-    }
-  }
-
-  // 3. Search in standard libraries for system-wide installed DMTCP (using p2).
-  for (i = 0; i < sizeof(p2) / sizeof(char*); i++) {
-    pth = p2[i] + suffixFor32Bits + file;
-    if (FileExists(pth)) {
-      return pth;
-    }
-  }
-
-  return file;
 }
 
 jalib::StringVector jalib::Filesystem::GetProgramArgs()

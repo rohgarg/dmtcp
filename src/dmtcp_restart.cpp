@@ -44,7 +44,7 @@ using namespace dmtcp;
 
 static void setEnvironFd();
 
-dmtcp::string dmtcpTmpDir = "/DMTCP/Uninitialized/Tmp/Dir";
+string tmpDir = "/DMTCP/Uninitialized/Tmp/Dir";
 
 // gcc-4.3.4 -Wformat=2 issues false positives for warnings unless the format
 // string has at least one format specifier with corresponding format argument.
@@ -103,27 +103,27 @@ static const char* theUsage =
 
 class RestoreTarget;
 
-typedef dmtcp::map<dmtcp::UniquePid, RestoreTarget*> RestoreTargetMap;
+typedef map<UniquePid, RestoreTarget*> RestoreTargetMap;
 RestoreTargetMap targets;
 RestoreTargetMap independentProcessTreeRoots;
 bool noStrictUIDChecking = false;
 bool runAsRoot = false;
-static dmtcp::string thePortFile;
-CoordinatorAPI::CoordinatorMode allowedModes = CoordinatorAPI::COORD_ANY;
+static string thePortFile;
+CoordinatorMode allowedModes = COORD_ANY;
 
 static void setEnvironFd();
-static void runMtcpRestart(int is32bitElf, int fd, dmtcp::ProcessInfo *pInfo);
+static void runMtcpRestart(int is32bitElf, int fd, ProcessInfo *pInfo);
 
 class RestoreTarget
 {
   public:
-    RestoreTarget(const dmtcp::string& path)
+    RestoreTarget(const string& path)
       : _path(path)
     {
       JASSERT(jalib::Filesystem::FileExists(_path)) (_path)
         .Text ( "checkpoint file missing" );
 
-      _fd = dmtcp::CkptSerializer::readCkptHeader(_path, &_pInfo);
+      _fd = CkptSerializer::readCkptHeader(_path, &_pInfo);
       JTRACE("restore target") (_path) (_pInfo.numPeers()) (_pInfo.compGroup());
     }
 
@@ -137,6 +137,7 @@ class RestoreTarget
     string procname() { return _pInfo.procname(); }
     UniquePid compGroup() { return _pInfo.compGroup(); }
     int numPeers() { return _pInfo.numPeers(); }
+    bool noCoordinator() { return _pInfo.noCoordinator(); }
 
     void restoreGroup()
     {
@@ -177,18 +178,17 @@ class RestoreTarget
     {
       UniquePid::ThisProcess() = _pInfo.upid();
       UniquePid::ParentProcess() = _pInfo.uppid();
-      dmtcp::Util::initializeLogFile(_pInfo.procname());
+      Util::initializeLogFile(_pInfo.procname());
 
       if (createIndependentRootProcesses) {
         DmtcpUniqueProcessId compId = _pInfo.compGroup().upid();
         CoordinatorInfo coordInfo;
         struct in_addr localIPAddr;
-        CoordinatorAPI::CoordinatorMode mode = CoordinatorAPI::COORD_ANY;
         if (_pInfo.noCoordinator()) {
-          mode = CoordinatorAPI::COORD_NONE;
+          allowedModes = COORD_NONE;
         }
 
-        CoordinatorAPI::instance().connectToCoordOnRestart(mode,
+        CoordinatorAPI::instance().connectToCoordOnRestart(allowedModes,
                                                            _pInfo.procname(),
                                                            _pInfo.compGroup(),
                                                            _pInfo.numPeers(),
@@ -197,14 +197,22 @@ class RestoreTarget
         Util::writeCoordPortToFile(getenv(ENV_VAR_NAME_PORT),
                                    thePortFile.c_str());
 
+        string installDir =
+          jalib::Filesystem::DirName(jalib::Filesystem::GetProgramDir());
+
         /* We need to initialize SharedData here to make sure that it is
          * initialized with the correct coordinator timestamp.  The coordinator
          * timestamp is updated only during postCkpt callback. However, the
          * SharedData area may be initialized earlier (for example, while
          * recreating threads), causing it to use *older* timestamp.
          */
-        SharedData::initialize(Util::getTmpDir().c_str(), &compId, &coordInfo,
+        SharedData::initialize(tmpDir.c_str(),
+                               installDir.c_str(),
+                               &compId,
+                               &coordInfo,
                                &localIPAddr);
+
+        Util::prepareDlsymWrapper();
       }
 
       JTRACE("Creating process during restart") (upid()) (_pInfo.procname());
@@ -266,7 +274,7 @@ class RestoreTarget
       if (ckptDir.length() == 0) {
         // Create the ckpt-dir fd so that the restarted process can know about
         // the abs-path of ckpt-image.
-        dmtcp::string dirName = jalib::Filesystem::DirName(_path);
+        string dirName = jalib::Filesystem::DirName(_path);
         int dirfd = open(dirName.c_str(), O_RDONLY);
         JASSERT(dirfd != -1) (JASSERT_ERRNO);
         if (dirfd != PROTECTED_CKPT_DIR_FD) {
@@ -276,7 +284,7 @@ class RestoreTarget
       }
 
       if (!createIndependentRootProcesses) {
-        CoordinatorAPI::instance().connectToCoordOnRestart(CoordinatorAPI::COORD_ANY,
+        CoordinatorAPI::instance().connectToCoordOnRestart(allowedModes,
                                                            _pInfo.procname(),
                                                            _pInfo.compGroup(),
                                                            _pInfo.numPeers(),
@@ -286,7 +294,7 @@ class RestoreTarget
       setEnvironFd();
       int is32bitElf = 0;
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__aarch64__)
       is32bitElf = (_pInfo.elfType() == ProcessInfo::Elf_32);
 #endif
       runMtcpRestart(is32bitElf, _fd, &_pInfo);
@@ -295,24 +303,22 @@ class RestoreTarget
     }
 
   private:
-    dmtcp::string _path;
-    dmtcp::ProcessInfo _pInfo;
+    string _path;
+    ProcessInfo _pInfo;
     int _fd;
 };
 
-static void runMtcpRestart(int is32bitElf, int fd, dmtcp::ProcessInfo *pInfo)
+static void runMtcpRestart(int is32bitElf, int fd, ProcessInfo *pInfo)
 {
   char fdBuf[8];
   char stderrFdBuf[8];
   sprintf(fdBuf, "%d", fd);
   sprintf(stderrFdBuf, "%d", PROTECTED_STDERR_FD);
 
-  static dmtcp::string mtcprestart =
-    jalib::Filesystem::FindHelperUtility ("mtcp_restart");
+  static string mtcprestart = Util::getPath ("mtcp_restart");
 
   if (is32bitElf) {
-    mtcprestart = jalib::Filesystem::FindHelperUtility("mtcp_restart-32",
-                                                       is32bitElf);
+    mtcprestart = Util::getPath("mtcp_restart-32", is32bitElf);
   }
 
   char* const newArgs[] = {
@@ -330,7 +336,7 @@ static void runMtcpRestart(int is32bitElf, int fd, dmtcp::ProcessInfo *pInfo)
 static void setEnvironFd()
 {
   char envFile[PATH_MAX];
-  sprintf(envFile, "%s/envFile.XXXXXX", dmtcpTmpDir.c_str());
+  sprintf(envFile, "%s/envFile.XXXXXX", tmpDir.c_str());
   int fd = mkstemp(envFile);
   JASSERT(fd != -1) (envFile) (JASSERT_ERRNO);
   JASSERT(unlink(envFile) == 0) (envFile) (JASSERT_ERRNO);
@@ -393,7 +399,7 @@ int main(int argc, char** argv)
   //process args
   shift;
   while (true) {
-    dmtcp::string s = argc>0 ? argv[0] : "--help";
+    string s = argc>0 ? argv[0] : "--help";
     if (s == "--help" && argc == 1) {
       printf("%s", theUsage);
       return DMTCP_FAIL_RC;
@@ -401,10 +407,10 @@ int main(int argc, char** argv)
       printf("%s", DMTCP_VERSION_AND_COPYRIGHT_INFO);
       return DMTCP_FAIL_RC;
     } else if (s == "-j" || s == "--join") {
-      allowedModes = dmtcp::CoordinatorAPI::COORD_JOIN;
+      allowedModes = COORD_JOIN;
       shift;
     } else if (s == "--new-coordinator") {
-      allowedModes = dmtcp::CoordinatorAPI::COORD_NEW;
+      allowedModes = COORD_NEW;
       shift;
     } else if (s == "--run-as-root") {
       runAsRoot = true;
@@ -454,13 +460,12 @@ int main(int argc, char** argv)
     }
   }
 
-  dmtcp::Util::setTmpDir(getenv(ENV_VAR_TMPDIR));
-  dmtcpTmpDir = dmtcp::Util::getTmpDir();
+  tmpDir = Util::calcTmpDir(getenv(ENV_VAR_TMPDIR));
 
   jassert_quiet = *getenv(ENV_VAR_QUIET) - '0';
 
   //make sure JASSERT initializes now, rather than during restart
-  Util::initializeLogFile();
+  Util::initializeLogFile(tmpDir);
 
   if (!runAsRoot && (getuid() == 0 || geteuid() == 0)) {
     JASSERT_STDERR <<
@@ -474,7 +479,7 @@ int main(int argc, char** argv)
 
   bool doAbort = false;
   for (; argc > 0; shift) {
-    dmtcp::string restorename(argv[0]);
+    string restorename(argv[0]);
     struct stat buf;
     int rc = stat(restorename.c_str(), &buf);
     if (Util::strEndsWith(restorename, "_files")) {
@@ -532,10 +537,11 @@ int main(int argc, char** argv)
 
   WorkerState::setCurrentState(WorkerState::RESTARTING);
 
-  dmtcp::Util::prepareDlsymWrapper();
-
   RestoreTarget *t = independentProcessTreeRoots.begin()->second;
   JASSERT(t->pid() != 0);
+  JASSERT(!t->noCoordinator() || allowedModes == COORD_ANY)
+    .Text("Process had no coordinator prior to checkpoint; but either --join or"
+          " --new-coordinator was specified.");
   t->createProcess(true);
   JASSERT(false).Text("unreachable");
   return -1;

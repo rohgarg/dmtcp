@@ -31,17 +31,17 @@
 
 namespace dmtcp
 {
+  enum CoordinatorMode {
+    COORD_INVALID   = 0x0000,
+    COORD_JOIN      = 0x0001,
+    COORD_NEW       = 0x0002,
+    COORD_NONE      = 0x0004,
+    COORD_ANY       = 0x0010
+  };
+
   class CoordinatorAPI
   {
     public:
-      enum CoordinatorMode {
-        COORD_INVALID   = 0x0000,
-        COORD_JOIN      = 0x0001,
-        COORD_NEW       = 0x0002,
-        COORD_NONE      = 0x0004,
-        COORD_ANY       = 0x0010
-      };
-
 #ifdef JALIB_ALLOCATOR
       static void* operator new(size_t nbytes, void* p) { return p; }
       static void* operator new(size_t nbytes) { JALLOC_HELPER_NEW(nbytes); }
@@ -52,6 +52,7 @@ namespace dmtcp
 
       static CoordinatorAPI& instance();
       static void init();
+      static void restart();
       static void resetOnFork(CoordinatorAPI& coordAPI);
 
       void setupVirtualCoordinator(CoordinatorInfo *coordInfo,
@@ -66,7 +67,7 @@ namespace dmtcp
                                    struct in_addr  *localIP);
       void createNewConnectionBeforeFork(string& progname);
       void connectToCoordOnRestart(CoordinatorMode  mode,
-                                   dmtcp::string progname,
+                                   string progname,
                                    UniquePid compGroup,
                                    int np,
                                    CoordinatorInfo *coordInfo,
@@ -79,15 +80,16 @@ namespace dmtcp
       void sendMsgToCoordinator(const DmtcpMessage &msg,
                                 const void *extraData = NULL,
                                 size_t len = 0);
-      void recvMsgFromCoordinator(dmtcp::DmtcpMessage *msg,
+      void recvMsgFromCoordinator(DmtcpMessage *msg,
                                   void **extraData = NULL);
       void connectAndSendUserCommand(char c,
                                      int *coordCmdStatus = NULL,
                                      int *numPeers = NULL,
-                                     int *isRunning = NULL);
+                                     int *isRunning = NULL,
+                                     int *ckptInterval = NULL);
 
       void updateCoordCkptDir(const char *dir);
-      dmtcp::string getCoordCkptDir(void);
+      string getCoordCkptDir(void);
 
       void sendCkptFilename();
 
@@ -100,12 +102,11 @@ namespace dmtcp
                                  void *val, uint32_t *val_len);
 
     private:
-      void startNewCoordinator(CoordinatorAPI::CoordinatorMode mode);
-      void createNewConnToCoord(CoordinatorAPI::CoordinatorMode mode);
+      void startNewCoordinator(CoordinatorMode mode);
+      void createNewConnToCoord(CoordinatorMode mode);
       DmtcpMessage sendRecvHandshake(DmtcpMessage msg, string progname,
                                      UniquePid *compId = NULL);
 
-    protected:
       jalib::JSocket          _coordinatorSocket;
       jalib::JSocket          _nsSock;
   };

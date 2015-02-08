@@ -5,7 +5,9 @@ AC_INIT([DMTCP],
         [http://dmtcp.sourceforge.net])
 
 AC_PREREQ([2.60])
-AM_INIT_AUTOMAKE([foreign])
+# TODO(kapil): Remove 'no-dependencies' flag in future after
+# http://debbugs.gnu.org/cgi/bugreport.cgi?bug=13928 has been fixed.
+AM_INIT_AUTOMAKE([subdir-objects no-dependencies foreign])
 AM_MAINTAINER_MODE
 AC_CANONICAL_HOST
 AC_PROG_INSTALL
@@ -22,7 +24,7 @@ dnl This sets OPENMP_CXXFLAGS
 AC_LANG_PUSH([C++])
 AC_OPENMP
 AC_LANG_POP([C++])
-AM_CONFIG_HEADER([include/config.h])
+AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_FILES([Makefile \
                  contrib/Makefile \
                  contrib/ckptfile/Makefile \
@@ -39,6 +41,7 @@ AC_CONFIG_FILES([Makefile \
                  src/plugin/dl/Makefile \
                  src/plugin/ipc/Makefile \
                  src/plugin/pid/Makefile \
+                 src/plugin/timer/Makefile \
                  test/Makefile \
                  test/autotest_config.py \
                  test/plugin/Makefile])
@@ -69,8 +72,8 @@ AC_ARG_ENABLE([debug],
 if test "$use_jassert" = "yes"; then
   AC_SUBST([DEBUG], [yes])
   AC_DEFINE([DEBUG],[1],[Verbose debug output and log files in $DMTCP_TMPDIR])
-  CFLAGS="-g -O0 -Wall"
-  CXXFLAGS="-g -O0 -Wall"
+  CFLAGS="-DDEBUG -g -O0 -Wall"
+  CXXFLAGS="-DDEBUG -g -O0 -Wall"
 else
   AC_SUBST([DEBUG], [no])
 fi

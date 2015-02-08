@@ -21,7 +21,7 @@
 // For i386 and x86_64, SETJMP currently has bugs.  Don't turn this
 //   on for them until they are debugged.
 // Default is to use  setcontext/getcontext.
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
 # define SETJMP /* setcontext/getcontext not defined for ARM glibc */
 #endif
 
@@ -95,7 +95,7 @@ static void save_sp(void **sp)
   asm volatile (CLEAN_FOR_64_BIT(mov %%esp,%0)
 		: "=g" (*sp)
                 : : "memory");
-#elif defined(__arm__)
+#elif defined(__arm__) || defined(__aarch64__)
   asm volatile ("mov %0,sp"
 		: "=r" (*sp)
                 : : "memory");
@@ -594,6 +594,14 @@ void ThreadList::postRestart(void)
 {
   Thread *thread;
   sigset_t tmp;
+
+  /* If MTCP_RESTART_PAUSE set, sleep 15 seconds and allow gdb attach. */
+  if (getenv("MTCP_RESTART_PAUSE")) {
+    struct timespec delay = {15, 0}; /* 15 seconds */
+    printf("Pausing 15 seconds. Do:  gdb <PROGNAME> %ld\n",
+    	   (long)THREAD_REAL_TID());
+    nanosleep(&delay, NULL);
+  }
 
   /* Fill in the new mother process id */
   motherpid = THREAD_REAL_TID();

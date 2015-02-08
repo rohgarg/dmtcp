@@ -27,12 +27,13 @@
 #include "jassert.h"
 #include "ipc.h"
 
+using namespace dmtcp;
+
 void dmtcp_SSH_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data);
 void dmtcp_FileConnList_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data);
 void dmtcp_SocketConnList_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data);
 void dmtcp_EventConnList_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data);
 void dmtcp_SysVIPC_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data);
-void dmtcp_Timer_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data);
 
 void dmtcp_FileConn_ProcessFdEvent(int event, int arg1, int arg2);
 void dmtcp_SocketConn_ProcessFdEvent(int event, int arg1, int arg2);
@@ -46,13 +47,12 @@ void dmtcp_event_hook(DmtcpEvent_t event, DmtcpEventData_t *data)
   dmtcp_SocketConnList_EventHook(event, data);
   dmtcp_EventConnList_EventHook(event, data);
   dmtcp_SysVIPC_EventHook(event, data);
-  dmtcp_Timer_EventHook(event, data);
 
   DMTCP_NEXT_EVENT_HOOK(event, data);
   return;
 }
 
-LIB_PRIVATE void process_fd_event(int event, int arg1, int arg2 = -1)
+extern "C" void process_fd_event(int event, int arg1, int arg2 = -1)
 {
   dmtcp_FileConn_ProcessFdEvent(event, arg1, arg2);
   dmtcp_SocketConn_ProcessFdEvent(event, arg1, arg2);

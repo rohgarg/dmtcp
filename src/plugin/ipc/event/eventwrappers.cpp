@@ -62,6 +62,10 @@ using namespace dmtcp;
  * + io_getevents(2).
  */
 
+// TODO(kapil): A better way to fix this is to lookup the stack to check if we
+// are in the middle of a poll/select/pselect call and set some global variable
+// and restart the syscall only if that variable is set.
+
 /* Poll wrapper forces poll to restart after ckpt/resume or ckpt/restart */
 extern "C" int poll(struct pollfd *fds, nfds_t nfds, POLL_TIMEOUT_TYPE timeout)
 {
@@ -69,6 +73,44 @@ extern "C" int poll(struct pollfd *fds, nfds_t nfds, POLL_TIMEOUT_TYPE timeout)
   while (1) {
     uint32_t orig_generation = dmtcp_get_generation();
     rc = _real_poll(fds, nfds, timeout);
+    if (rc == -1 && errno == EINTR &&
+         dmtcp_get_generation() > orig_generation) {
+      continue;  // This was a restart or resume after checkpoint.
+    } else {
+      break;  // The signal interrupting us was not our checkpoint signal.
+    }
+  }
+  return rc;
+}
+
+
+// pselect wrapper forces pselect to restart after ckpt/resume or ckpt/restart
+extern "C" int pselect(int nfds, fd_set *readfds, fd_set *writefds,
+                       fd_set *exceptfds, const struct timespec *timeout,
+                       const sigset_t *sigmask)
+{
+  int rc;
+  while (1) {
+    uint32_t orig_generation = dmtcp_get_generation();
+    rc = _real_pselect(nfds, readfds, writefds, exceptfds, timeout, sigmask);
+    if (rc == -1 && errno == EINTR &&
+         dmtcp_get_generation() > orig_generation) {
+      continue;  // This was a restart or resume after checkpoint.
+    } else {
+      break;  // The signal interrupting us was not our checkpoint signal.
+    }
+  }
+  return rc;
+}
+
+
+extern "C" int select(int nfds, fd_set *readfds, fd_set *writefds,
+                       fd_set *exceptfds, struct timeval *timeout)
+{
+  int rc;
+  while (1) {
+    uint32_t orig_generation = dmtcp_get_generation();
+    rc = _real_select(nfds, readfds, writefds, exceptfds, timeout);
     if (rc == -1 && errno == EINTR &&
          dmtcp_get_generation() > orig_generation) {
       continue;  // This was a restart or resume after checkpoint.
@@ -118,7 +160,7 @@ extern "C" int epoll_create(int size)
   int ret = _real_epoll_create(size);
   if (ret != -1) {
     JTRACE("epoll fd created") (ret) (size);
-    dmtcp::EventConnList::instance().add(ret, new dmtcp::EpollConnection(size));
+    EventConnList::instance().add(ret, new EpollConnection(size));
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return ret;
@@ -130,7 +172,7 @@ extern "C" int epoll_create1(int flags)
   int ret = _real_epoll_create1(flags);
   if (ret != -1) {
     JTRACE("epoll fd created1") (ret) (flags);
-    dmtcp::EventConnList::instance().add(ret, new dmtcp::EpollConnection(flags));
+    EventConnList::instance().add(ret, new EpollConnection(flags));
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return ret;
@@ -220,8 +262,8 @@ EXTERNC int inotify_init()
   if (fd > 0) {
     JTRACE ( "inotify fd created" ) ( ret );
     //create the inotify object
-    dmtcp::Connection *con = new dmtcp::InotifyConnection(0);
-    dmtcp::EventConnList::instance().add(ret, con);
+    Connection *con = new InotifyConnection(0);
+    EventConnList::instance().add(ret, con);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return fd;
@@ -241,8 +283,8 @@ EXTERNC int inotify_init1(int flags)
   int ret = _real_inotify_init1(flags);
   if (ret != -1) {
     JTRACE("inotify1 fd created") (ret) (flags);
-    dmtcp::Connection *con = new dmtcp::InotifyConnection(flags);
-    dmtcp::EventConnList::instance().add(ret, flags);
+    Connection *con = new InotifyConnection(flags);
+    EventConnList::instance().add(ret, flags);
   }
   DMTCP_PLUGIN_ENABLE_CKPT();
   return ret;

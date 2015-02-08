@@ -49,8 +49,12 @@ void dmtcp_CoordinatorAPI_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data)
       JASSERT(CoordinatorAPI::instance().isValid());
       break;
 
+    case DMTCP_EVENT_RESTART:
+      CoordinatorAPI::restart();
+      break;
+
     case DMTCP_EVENT_RESUME:
-      dmtcp::CoordinatorAPI::instance().sendCkptFilename();
+      CoordinatorAPI::instance().sendCkptFilename();
       break;
 
     case DMTCP_EVENT_EXIT:
@@ -63,20 +67,29 @@ void dmtcp_CoordinatorAPI_EventHook(DmtcpEvent_t event, DmtcpEventData_t *data)
   }
 }
 
-static void getHostAndPort(CoordinatorAPI::CoordinatorMode mode,
-                           dmtcp::string *hostname,
-                           int *port)
+void CoordinatorAPI::restart()
 {
+  instance()._nsSock.close();
+}
+
+static void getHostAndPort(CoordinatorMode mode, string *hostname, int *port)
+{
+  JASSERT(mode & COORD_JOIN || mode & COORD_NEW || mode & COORD_ANY);
+
+  if (SharedData::initialized()) {
+    *hostname = SharedData::coordHost();
+    *port = SharedData::coordPort();
+    return;
+  }
+
   const char *addr = getenv (ENV_VAR_NAME_HOST);
   if (addr == NULL) addr = DEFAULT_HOST;
   *hostname = addr;
 
   const char *portStr = getenv (ENV_VAR_NAME_PORT);
-
-  JASSERT(mode & CoordinatorAPI::COORD_NEW || mode & CoordinatorAPI::COORD_ANY);
   if (portStr != NULL) {
     *port = jalib::StringToInt(portStr);
-  } else if (mode & CoordinatorAPI::COORD_NEW) {
+  } else if (mode & COORD_NEW) {
     *port = 0;
   } else {
     *port = DEFAULT_PORT;
@@ -99,42 +112,9 @@ static uint32_t getCkptInterval()
   return ret;
 }
 
-static dmtcp::string getPrefixDir()
+static jalib::JSocket createNewSocketToCoordinator(CoordinatorMode mode)
 {
-  dmtcp::string prefixDir = "";
-  const char *prefixPathEnv = getenv(ENV_VAR_PREFIX_PATH);
-  if (prefixPathEnv != NULL) {
-    /* If --prefix was defined then this process is either running on the local
-     * node (the home of first process in the comptation) or a remote node.
-     *
-     * If the process is running on the local node, the prefix-path-env may be
-     * different from the prefix-dir of this binary, in which case, we want to
-     * send the prefix-path of this binary to the coordinator and the
-     * coordinator will save it as the local-prefix.
-     *
-     * However, if this is running on a remote node, the prefix-path-env would
-     * be the same as the prefix-path of this binary and we should send the
-     * prefix-path-env to the coordinator and the coordinator will note this as
-     * the remote-prefix.
-     */
-    const char *utilDirPath = getenv(ENV_VAR_UTILITY_DIR);
-    dmtcp::string utilDirPrefix = "";
-    if (utilDirPath != NULL) {
-      utilDirPrefix = jalib::Filesystem::DirName(utilDirPath);
-    }
-    if (utilDirPrefix == jalib::Filesystem::ResolveSymlink(prefixPathEnv)) {
-      prefixDir = prefixPathEnv;
-    } else {
-      prefixDir = utilDirPrefix;
-    }
-  }
-  return prefixDir;
-}
-
-static jalib::JSocket
-createNewSocketToCoordinator( CoordinatorAPI::CoordinatorMode mode)
-{
-  dmtcp::string addr;
+  string addr;
   int port;
 
   getHostAndPort(mode, &addr, &port);
@@ -142,12 +122,12 @@ createNewSocketToCoordinator( CoordinatorAPI::CoordinatorMode mode)
   return sock;
 }
 
-//dmtcp::CoordinatorAPI::CoordinatorAPI (int sockfd)
+//CoordinatorAPI::CoordinatorAPI (int sockfd)
   //: _coordinatorSocket(sockfd)
 //{ }
 
-static dmtcp::CoordinatorAPI *coordAPIInst = NULL;
-dmtcp::CoordinatorAPI& dmtcp::CoordinatorAPI::instance()
+static CoordinatorAPI *coordAPIInst = NULL;
+CoordinatorAPI& CoordinatorAPI::instance()
 {
   //static SysVIPC *inst = new SysVIPC(); return *inst;
   if (coordAPIInst == NULL) {
@@ -159,7 +139,7 @@ dmtcp::CoordinatorAPI& dmtcp::CoordinatorAPI::instance()
   return *coordAPIInst;
 }
 
-void dmtcp::CoordinatorAPI::init()
+void CoordinatorAPI::init()
 {
   JTRACE("Informing coordinator of new process") (UniquePid::ThisProcess());
 
@@ -176,7 +156,7 @@ void dmtcp::CoordinatorAPI::init()
   // to call recvCoordinatorHandshake().
 }
 
-void dmtcp::CoordinatorAPI::resetOnFork(dmtcp::CoordinatorAPI& coordAPI)
+void CoordinatorAPI::resetOnFork(CoordinatorAPI& coordAPI)
 {
   JASSERT(coordAPI._coordinatorSocket.isValid());
   JASSERT(coordAPI._coordinatorSocket.sockfd() != PROTECTED_COORD_FD);
@@ -197,8 +177,8 @@ void dmtcp::CoordinatorAPI::resetOnFork(dmtcp::CoordinatorAPI& coordAPI)
   instance()._nsSock.close();
 }
 
-void dmtcp::CoordinatorAPI::setupVirtualCoordinator(CoordinatorInfo *coordInfo,
-                                                    struct in_addr  *localIP)
+void CoordinatorAPI::setupVirtualCoordinator(CoordinatorInfo *coordInfo,
+                                             struct in_addr  *localIP)
 {
   const char *portStr = getenv(ENV_VAR_NAME_PORT);
   int port = (portStr == NULL) ? DEFAULT_PORT : jalib::StringToInt(portStr);
@@ -209,7 +189,7 @@ void dmtcp::CoordinatorAPI::setupVirtualCoordinator(CoordinatorInfo *coordInfo,
   string coordPort= jalib::XToString(_coordinatorSocket.port());
   setenv (ENV_VAR_NAME_PORT, coordPort.c_str(), 1);
 
-  dmtcp::Util::setVirtualPidEnvVar(INITIAL_VIRTUAL_PID, getppid());
+  Util::setVirtualPidEnvVar(INITIAL_VIRTUAL_PID, getppid());
 
   UniquePid coordId = UniquePid(INITIAL_VIRTUAL_PID,
                                 UniquePid::ThisProcess().hostid(),
@@ -227,7 +207,7 @@ void dmtcp::CoordinatorAPI::setupVirtualCoordinator(CoordinatorInfo *coordInfo,
   memset(localIP, 0, sizeof(*localIP));
 }
 
-void dmtcp::CoordinatorAPI::waitForCheckpointCommand()
+void CoordinatorAPI::waitForCheckpointCommand()
 {
   uint32_t ckptInterval = SharedData::getCkptInterval();
   struct timeval tmptime={0,0};
@@ -265,8 +245,8 @@ void dmtcp::CoordinatorAPI::waitForCheckpointCommand()
   } while (remaining > 0);
 
   jalib::JSocket cmdSock(-1);
-  dmtcp::DmtcpMessage msg;
-  dmtcp::DmtcpMessage reply(DMT_USER_CMD_RESULT);
+  DmtcpMessage msg;
+  DmtcpMessage reply(DMT_USER_CMD_RESULT);
   do {
     cmdSock.close();
     cmdSock = _coordinatorSocket.accept();
@@ -311,7 +291,7 @@ void dmtcp::CoordinatorAPI::waitForCheckpointCommand()
   return;
 }
 
-bool dmtcp::CoordinatorAPI::noCoordinator()
+bool CoordinatorAPI::noCoordinator()
 {
   static int virtualCoordinator = -1;
   if (virtualCoordinator == -1) {
@@ -328,10 +308,11 @@ bool dmtcp::CoordinatorAPI::noCoordinator()
   return virtualCoordinator;
 }
 
-void dmtcp::CoordinatorAPI::connectAndSendUserCommand(char c,
-                                                      int *coordCmdStatus,
-                                                      int *numPeers,
-                                                      int *isRunning)
+void CoordinatorAPI::connectAndSendUserCommand(char c,
+                                               int *coordCmdStatus,
+                                               int *numPeers,
+                                               int *isRunning,
+                                               int *ckptInterval)
 {
   _coordinatorSocket = createNewSocketToCoordinator(COORD_ANY);
   if (!_coordinatorSocket.isValid()) {
@@ -376,11 +357,14 @@ void dmtcp::CoordinatorAPI::connectAndSendUserCommand(char c,
   if (isRunning != NULL) {
     *isRunning = reply.isRunning;
   }
+  if (ckptInterval != NULL) {
+    *ckptInterval = reply.theCheckpointInterval;
+  }
 
   _coordinatorSocket.close();
 }
 
-dmtcp::string dmtcp::CoordinatorAPI::getCoordCkptDir(void)
+string CoordinatorAPI::getCoordCkptDir(void)
 {
   // FIXME: Add a test for make-check.
   char buf[PATH_MAX];
@@ -398,7 +382,7 @@ dmtcp::string dmtcp::CoordinatorAPI::getCoordCkptDir(void)
   return buf;
 }
 
-void dmtcp::CoordinatorAPI::updateCoordCkptDir(const char *dir)
+void CoordinatorAPI::updateCoordCkptDir(const char *dir)
 {
   if (noCoordinator()) return;
   JASSERT(dir != NULL);
@@ -408,9 +392,9 @@ void dmtcp::CoordinatorAPI::updateCoordCkptDir(const char *dir)
   _coordinatorSocket.writeAll(dir, strlen(dir) + 1);
 }
 
-void dmtcp::CoordinatorAPI::sendMsgToCoordinator(const dmtcp::DmtcpMessage &msg,
-                                                 const void *extraData,
-                                                 size_t len)
+void CoordinatorAPI::sendMsgToCoordinator(const DmtcpMessage &msg,
+                                          const void *extraData,
+                                          size_t len)
 {
   if (noCoordinator()) return;
   _coordinatorSocket << msg;
@@ -421,8 +405,7 @@ void dmtcp::CoordinatorAPI::sendMsgToCoordinator(const dmtcp::DmtcpMessage &msg,
   }
 }
 
-void dmtcp::CoordinatorAPI::recvMsgFromCoordinator(dmtcp::DmtcpMessage *msg,
-                                                   void **extraData)
+void CoordinatorAPI::recvMsgFromCoordinator(DmtcpMessage *msg, void **extraData)
 {
   JASSERT(!noCoordinator());
   msg->poison();
@@ -439,10 +422,9 @@ void dmtcp::CoordinatorAPI::recvMsgFromCoordinator(dmtcp::DmtcpMessage *msg,
   }
 }
 
-void dmtcp::CoordinatorAPI::startNewCoordinator(CoordinatorAPI::CoordinatorMode
-                                                mode)
+void CoordinatorAPI::startNewCoordinator(CoordinatorMode mode)
 {
-  dmtcp::string addr;
+  string addr;
   int port;
   getHostAndPort(mode, &addr, &port);
 
@@ -463,17 +445,20 @@ void dmtcp::CoordinatorAPI::startNewCoordinator(CoordinatorAPI::CoordinatorMode
           "\nKill other coordinators and try again in a minute or so.");
   // Now dup the sockfd to
   coordinatorListenerSocket.changeFd(PROTECTED_COORD_FD);
-  dmtcp::string coordPort= jalib::XToString(coordinatorListenerSocket.port());
+  string coordPort= jalib::XToString(coordinatorListenerSocket.port());
   setenv (ENV_VAR_NAME_PORT, coordPort.c_str(), 1);
 
   JTRACE("Starting a new coordinator automatically.") (coordPort);
 
   if (fork() == 0) {
-    dmtcp::string coordinator = jalib::Filesystem::FindHelperUtility("dmtcp_coordinator");
+    // We can't use Util::getPath() here since the SharedData has not been
+    // initialized yet.
+    string coordinator =
+      jalib::Filesystem::GetProgramDir() + "/dmtcp_coordinator";
+
     char *modeStr = (char *)"--daemon";
     char * args[] = {
       (char*)coordinator.c_str(),
-      (char*)"--quiet",
       (char*)"--exit-on-last",
       modeStr,
       NULL
@@ -488,7 +473,7 @@ void dmtcp::CoordinatorAPI::startNewCoordinator(CoordinatorAPI::CoordinatorMode
   JASSERT(wait(&status) > 0) (JASSERT_ERRNO);
 }
 
-void CoordinatorAPI::createNewConnToCoord(CoordinatorAPI::CoordinatorMode mode)
+void CoordinatorAPI::createNewConnToCoord(CoordinatorMode mode)
 {
   if (mode & COORD_JOIN) {
     _coordinatorSocket = createNewSocketToCoordinator(mode);
@@ -514,9 +499,9 @@ void CoordinatorAPI::createNewConnToCoord(CoordinatorAPI::CoordinatorMode mode)
   _coordinatorSocket.changeFd(PROTECTED_COORD_FD);
 }
 
-DmtcpMessage dmtcp::CoordinatorAPI::sendRecvHandshake(DmtcpMessage msg,
-                                                      string progname,
-                                                      UniquePid *compId)
+DmtcpMessage CoordinatorAPI::sendRecvHandshake(DmtcpMessage msg,
+                                               string progname,
+                                               UniquePid *compId)
 {
   if (dmtcp_virtual_to_real_pid) {
     msg.realPid = dmtcp_virtual_to_real_pid(getpid());
@@ -525,20 +510,12 @@ DmtcpMessage dmtcp::CoordinatorAPI::sendRecvHandshake(DmtcpMessage msg,
   }
 
   msg.theCheckpointInterval = getCkptInterval();
-  dmtcp::string hostname = jalib::Filesystem::GetCurrentHostname();
-  dmtcp::string prefixDir = getPrefixDir();
+  string hostname = jalib::Filesystem::GetCurrentHostname();
   msg.extraBytes = hostname.length() + 1 + progname.length() + 1;
-  if (!prefixDir.empty()) {
-    msg.extraBytes += prefixDir.length() + 1;
-  }
 
   _coordinatorSocket << msg;
   _coordinatorSocket.writeAll(hostname.c_str(), hostname.length() + 1);
   _coordinatorSocket.writeAll(progname.c_str(), progname.length() + 1);
-  if (!prefixDir.empty()) {
-    _coordinatorSocket.writeAll(prefixDir.c_str(), prefixDir.length() + 1);
-    msg.extraBytes += prefixDir.length() + 1;
-  }
 
   msg.poison();
   _coordinatorSocket >> msg;
@@ -557,22 +534,16 @@ DmtcpMessage dmtcp::CoordinatorAPI::sendRecvHandshake(DmtcpMessage msg,
     JASSERT(false) (*compId)
       .Text("Connection rejected by the coordinator.\n"
             " Reason: This process has a different computation group.");
-  } else if (msg.type == DMT_REJECT_WRONG_PREFIX) {
-    JASSERT(false) (prefixDir)
-      .Text("Connection rejected by the coordinator.\n"
-            "Reason: Prefix supplied with --prefix doesn't match the prefix\n"
-            "        of other processes in the computation.\n"
-            "        (DMTCP installed at different paths?)");
   }
   JASSERT(msg.type == DMT_ACCEPT);
   return msg;
 }
 
-void dmtcp::CoordinatorAPI::connectToCoordOnStartup(CoordinatorMode  mode,
-                                                    string           progname,
-                                                    DmtcpUniqueProcessId *compId,
-                                                    CoordinatorInfo *coordInfo,
-                                                    struct in_addr  *localIP)
+void CoordinatorAPI::connectToCoordOnStartup(CoordinatorMode mode,
+                                             string progname,
+                                             DmtcpUniqueProcessId *compId,
+                                             CoordinatorInfo *coordInfo,
+                                             struct in_addr  *localIP)
 {
   JASSERT(compId != NULL && localIP != NULL && coordInfo != NULL);
 
@@ -591,7 +562,7 @@ void dmtcp::CoordinatorAPI::connectToCoordOnStartup(CoordinatorMode  mode,
 
   JASSERT(hello_remote.virtualPid != -1);
   JTRACE("Got virtual pid from coordinator") (hello_remote.virtualPid);
-  dmtcp::Util::setVirtualPidEnvVar(hello_remote.virtualPid, getppid());
+  Util::setVirtualPidEnvVar(hello_remote.virtualPid, getppid());
 
   JASSERT(compId != NULL && localIP != NULL && coordInfo != NULL);
   *compId = hello_remote.compGroup.upid();
@@ -605,7 +576,7 @@ void dmtcp::CoordinatorAPI::connectToCoordOnStartup(CoordinatorMode  mode,
   memcpy(localIP, &hello_remote.ipAddr, sizeof hello_remote.ipAddr);
 }
 
-void dmtcp::CoordinatorAPI::createNewConnectionBeforeFork(string& progname)
+void CoordinatorAPI::createNewConnectionBeforeFork(string& progname)
 {
   JASSERT(!noCoordinator());
   struct sockaddr_storage addr;
@@ -621,16 +592,16 @@ void dmtcp::CoordinatorAPI::createNewConnectionBeforeFork(string& progname)
 
   if (dmtcp_virtual_to_real_pid) {
     JTRACE("Got virtual pid from coordinator") (hello_remote.virtualPid);
-    dmtcp::Util::setVirtualPidEnvVar(hello_remote.virtualPid, getpid());
+    Util::setVirtualPidEnvVar(hello_remote.virtualPid, getpid());
   }
 }
 
-void dmtcp::CoordinatorAPI::connectToCoordOnRestart(CoordinatorMode  mode,
-                                                    dmtcp::string progname,
-                                                    UniquePid compGroup,
-                                                    int np,
-                                                    CoordinatorInfo *coordInfo,
-                                                    struct in_addr  *localIP)
+void CoordinatorAPI::connectToCoordOnRestart(CoordinatorMode  mode,
+                                             string progname,
+                                             UniquePid compGroup,
+                                             int np,
+                                             CoordinatorInfo *coordInfo,
+                                             struct in_addr  *localIP)
 {
   if (mode & COORD_NONE) {
     setupVirtualCoordinator(coordInfo, localIP);
@@ -663,14 +634,14 @@ void dmtcp::CoordinatorAPI::connectToCoordOnRestart(CoordinatorMode  mode,
   JTRACE("Coordinator handshake RECEIVED!!!!!");
 }
 
-void dmtcp::CoordinatorAPI::sendCkptFilename()
+void CoordinatorAPI::sendCkptFilename()
 {
   if (noCoordinator()) return;
   // Tell coordinator to record our filename in the restart script
-  dmtcp::string ckptFilename = dmtcp::ProcessInfo::instance().getCkptFilename();
-  dmtcp::string hostname = jalib::Filesystem::GetCurrentHostname();
+  string ckptFilename = ProcessInfo::instance().getCkptFilename();
+  string hostname = jalib::Filesystem::GetCurrentHostname();
   JTRACE("recording filenames") (ckptFilename) (hostname);
-  dmtcp::DmtcpMessage msg;
+  DmtcpMessage msg;
   if (dmtcp_unique_ckpt_enabled && dmtcp_unique_ckpt_enabled()) {
     msg.type = DMT_UNIQUE_CKPT_FILENAME;
   } else {
@@ -683,12 +654,12 @@ void dmtcp::CoordinatorAPI::sendCkptFilename()
 }
 
 
-int dmtcp::CoordinatorAPI::sendKeyValPairToCoordinator(const char *id,
-                                                       const void *key,
-                                                       uint32_t key_len,
-                                                       const void *val,
-                                                       uint32_t val_len,
-						       int sync)
+int CoordinatorAPI::sendKeyValPairToCoordinator(const char *id,
+                                                const void *key,
+                                                uint32_t key_len,
+                                                const void *val,
+                                                uint32_t val_len,
+                                                int sync)
 {
   DmtcpMessage msg (DMT_REGISTER_NAME_SERVICE_DATA);
   if (sync) {
@@ -728,11 +699,11 @@ int dmtcp::CoordinatorAPI::sendKeyValPairToCoordinator(const char *id,
 //   size of that buffer (the memory allocated by user).
 // On output, we copy data to val, and set *val_len to the actual buffer size
 //   (to the size of the data that we copied to the user buffer).
-int dmtcp::CoordinatorAPI::sendQueryToCoordinator(const char *id,
-                                                  const void *key,
-                                                  uint32_t key_len,
-                                                  void *val,
-                                                  uint32_t *val_len)
+int CoordinatorAPI::sendQueryToCoordinator(const char *id,
+                                           const void *key,
+                                           uint32_t key_len,
+                                           void *val,
+                                           uint32_t *val_len)
 {
   DmtcpMessage msg (DMT_NAME_SERVICE_QUERY);
   JWARNING(strlen(id) < sizeof(msg.nsid));

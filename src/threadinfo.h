@@ -15,7 +15,7 @@
 // For i386 and x86_64, SETJMP currently has bugs.  Don't turn this
 //   on for them until they are debugged.
 // Default is to use  setcontext/getcontext.
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
 # define SETJMP /* setcontext/getcontext not defined for ARM glibc */
 #endif
 
@@ -30,7 +30,7 @@ extern "C"
 {
 #endif
 
-#define GETTID() _real_syscall(SYS_gettid)
+#define GETTID() (pid_t)_real_syscall(SYS_gettid)
 #define TGKILL(pid,tid,sig) _real_syscall(SYS_tgkill, pid, tid, sig)
 
 pid_t dmtcp_get_real_tid() __attribute((weak));

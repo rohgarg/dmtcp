@@ -23,12 +23,14 @@
  * to define the realpath wrapper if compiled with -O0. Here we are renaming
  * realpath so that later code does not see the declaration of realpath as
  * inline. Normal user code from other files will continue to invoke realpath
- * as inline as an inline function calling __ptsname_r_chk. Later in this file
+ * as an inline function calling __ptsname_r_chk. Later in this file
  * we define __ptsname_r_chk to call the original realpath symbol.
  * Similarly, for ttyname_r, etc.
  *
  * Also, on some machines (e.g. SLES 10), readlink has conflicting return types
  * (ssize_t and int).
+ *     In general, we rename the functions below, since any type declarations
+ * may vary on different systems, and so we ignore these type declarations.
  */
 #define open open_always_inline
 #define open64 open64_always_inline
@@ -40,6 +42,11 @@
 #include <sys/ioctl.h>
 #include <string.h>
 
+#undef open
+#undef open64
+#undef readlink
+#undef realpath
+
 #include "jassert.h"
 #include "jfilesystem.h"
 #include "jconvert.h"
@@ -49,17 +56,14 @@
 #include "dmtcp.h"
 #include "pid.h"
 
-#undef open
-#undef open64
-#undef readlink
-#undef realpath
-
 #define PROC_PREFIX "/proc/"
+
+using namespace dmtcp;
 
 // FIXME:  This function needs third argument newpathsize, or assume PATH_MAX
 static void updateProcPathVirtualToReal(const char *path, char **newpath)
 {
-  if (dmtcp::Util::strStartsWith(path, PROC_PREFIX)) {
+  if (Util::strStartsWith(path, PROC_PREFIX)) {
     int index = strlen(PROC_PREFIX);
     char *rest;
     pid_t virtualPid = strtol(&path[index], &rest, 0);
@@ -75,7 +79,7 @@ static void updateProcPathVirtualToReal(const char *path, char **newpath)
 // FIXME:  This function needs third argument newpathsize, or assume PATH_MAX
 static void updateProcPathRealToVirtual(const char *path, char **newpath)
 {
-  if (dmtcp::Util::strStartsWith(path, PROC_PREFIX)) {
+  if (Util::strStartsWith(path, PROC_PREFIX)) {
     int index = strlen(PROC_PREFIX);
     char *rest;
     pid_t realPid = strtol(&path[index], &rest, 0);
@@ -222,7 +226,8 @@ extern "C" char *realpath(const char *path, char *resolved_path)
   char tmpbuf[PATH_MAX];
   char *newpath = tmpbuf;
   updateProcPathVirtualToReal(path, &newpath);
-  char *retval = NEXT_FNC(realpath) (newpath, resolved_path);
+  // Required for matlab-2012 and later; realpath is a versioned symbol.
+  char *retval = NEXT_FNC_DEFAULT(realpath) (newpath, resolved_path);
   if (retval != NULL) {
     updateProcPathRealToVirtual(retval, &newpath);
     strcpy(retval, newpath);

@@ -152,15 +152,11 @@ void abort(void) { mtcp_abort(); }
  * initialize a large array etc.
  */
 void *memset(void *s, int c, size_t n) {
-  char *p = s;
-  while (n-- > 0) {
-    *p++ = (char)c;
-  }
-  return s;
+  return mtcp_memset(s, c, n);
 }
+
 void *memcpy(void *dest, const void *src, size_t n) {
-  mtcp_sys_memcpy(dest, src, n);
-  return dest;
+  return mtcp_memcpy(dest, src, n);
 }
 
 #define shift argv++; argc--;
@@ -358,12 +354,12 @@ static void restart_fast_path()
  *    followed by copying new text below, followed by DSB and ISB,
  *    to eliminstate need for delay loop.  But this needs more testing.
  */
-  mtcp_sys_memcpy(rinfo.restore_addr, rinfo.text_addr, rinfo.text_size);
-  mtcp_sys_memcpy(rinfo.restore_addr + rinfo.text_size, &rinfo, sizeof(rinfo));
+  mtcp_memcpy(rinfo.restore_addr, rinfo.text_addr, rinfo.text_size);
+  mtcp_memcpy(rinfo.restore_addr + rinfo.text_size, &rinfo, sizeof(rinfo));
   void *stack_ptr = rinfo.restore_addr + rinfo.restore_size - MB;
 
-#ifdef __arm__
-#if 1
+#if defined(__arm__) || defined(__aarch64__)
+# if 1
   memfence();
 # else
   // FIXME: Remove the dead code once memfence() is stable.
@@ -391,7 +387,7 @@ static void restart_fast_path()
   asm volatile (CLEAN_FOR_64_BIT(mov %0,%%esp;)
                 /* This next assembly language confuses gdb.  Set a future
                    future breakpoint, or attach after this point, if in gdb.
-		   It's here to force a hard error ealry , in case of a bug.*/
+		   It's here to force a hard error early, in case of a bug.*/
                 CLEAN_FOR_64_BIT(xor %%ebp,%%ebp)
                 : : "g" (stack_ptr) : "memory");
 #elif defined(__arm__)
@@ -399,6 +395,11 @@ static void restart_fast_path()
                 : : "r" (stack_ptr) : "memory");
   /* If we're going to have an error, force a hard error early, to debug. */
   asm volatile ("mov fp,#0\n\tmov ip,#0\n\tmov lr,#0" : : );
+#elif defined(__aarch64__)
+  asm volatile ("mov sp,%0\n\t"
+                : : "r" (stack_ptr) : "memory");
+  /* If we're going to have an error, force a hard error early, to debug. */
+  // FIXME:  Add a hard error here in assembly.
 #else
 # error "assembly instruction not translated"
 #endif
@@ -493,7 +494,7 @@ static void restorememoryareas(RestoreInfo *rinfo_ptr)
   }
 
   RestoreInfo restore_info;
-  mtcp_sys_memcpy(&restore_info, rinfo_ptr, sizeof (restore_info));
+  mtcp_memcpy(&restore_info, rinfo_ptr, sizeof (restore_info));
 
 
   /* Unmap everything except for this image as everything we need
@@ -523,6 +524,8 @@ static void restorememoryareas(RestoreInfo *rinfo_ptr)
 				: : : CLEAN_FOR_64_BIT(eax));
 #elif defined(__arm__)
   mtcp_sys_kernel_set_tls(0);  /* Uses 'mcr', a kernel-mode instr. on ARM */
+#elif defined(__aarch64__)
+# warning __FUNCTION__ "TODO: Implementation for ARM64"
 #endif
 
   // so make sure we get a hard failure just in case
@@ -788,7 +791,7 @@ static void readmemoryareas(int fd)
       }
     }
   }
-#if __arm__
+#if defined(__arm__) || defined(__aarch64__)
   /* On ARM, with gzip enabled, we sometimes see SEGFAULT without this.
    * The SEGFAULT occurs within the initial thread, before any user threads
    * are unblocked.  WHY DOES THIS HAPPEN?
@@ -1179,7 +1182,7 @@ void restore_libc(ThreadTLSInfo *tlsInfo, int tls_pid_offset,
  *asm volatile ("movl %0,%%fs" : : "m" (tlsInfo->fs));
  *asm volatile ("movl %0,%%gs" : : "m" (tlsInfo->gs));
  */
-#elif __arm__
+#elif defined(__arm__) || defined(__aarch64__)
 /* ARM treats this same as x86_64 above. */
 #endif
 }
@@ -1295,12 +1298,27 @@ static char* fix_filename_if_new_cwd(char* filename)
 __attribute__((optimize(0)))
 static int open_shared_file(char* filename)
 {
-  int mtcp_sys_errno;
+  int mtcp_sys_errno = 0;
   int fd;
+  size_t i;
+
+  /* Create the directory structure */
+  char dir[PATH_MAX];
+  mtcp_memset(dir, 0, sizeof(dir));
+  mtcp_strcpy(dir, filename);
+  for (i = mtcp_strlen(dir) - 1; i > 0; i--) {
+    /* Remove the filename from the string */
+    if (dir[i] == '/') {
+      dir[i] = '\0';
+      mtcp_mkdir(dir);
+      break;
+    }
+  }
+
   /* Create the file */
   fd = mtcp_sys_open(filename, O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
   if (fd<0){
-    MTCP_PRINTF("unable to create file %s\n", filename);
+    MTCP_PRINTF("unable to create file %s: %d\n", filename, mtcp_sys_errno);
     mtcp_abort();
   }
   return fd;

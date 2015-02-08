@@ -33,9 +33,6 @@
 #include <execinfo.h> /* For backtrace() */
 #define BT_SIZE 50 /* Maximum size backtrace of stack */
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
 #include "jalloc.h"
 
 extern int jassert_quiet;
@@ -132,8 +129,6 @@ namespace jassert_internal
   void jassert_safe_print ( const char*, bool noConsoleOutput = false );
   void jassert_init();
   void close_stderr();
-  bool lockLog();
-  void unlockLog();
 
   template < typename T >
   inline JAssert& JAssert::Print ( const T& t )
@@ -204,20 +199,11 @@ namespace jassert_internal
 #define JTRACE(msg) if(true){}else jassert_internal::JAssert(false).JASSERT_CONTEXT("NOTE",msg).JASSERT_CONT_A
 #endif
 
-#ifdef QUIET
-#define JNOTE(msg) if(true){}else jassert_internal::JAssert(false).JASSERT_CONTEXT("NOTE",msg).JASSERT_CONT_A
-#else
 #define JNOTE(msg) if(jassert_quiet >= 1){}else \
     jassert_internal::JAssert(false).JASSERT_CONTEXT("NOTE",msg).JASSERT_CONT_A
-#endif
 
-#ifdef QUIET
-#define JWARNING(term) if(true){}else \
-    jassert_internal::JAssert(false).JASSERT_CONTEXT("WARNING","JWARNING(" #term ") failed").JASSERT_CONT_A
-#else
 #define JWARNING(term) if((term) || jassert_quiet >= 2){}else \
     jassert_internal::JAssert(false).JASSERT_CONTEXT("WARNING","JWARNING(" #term ") failed").JASSERT_CONT_A
-#endif
 
 #ifndef DEBUG
 # define JASSERT(term)  if((term)){}else \

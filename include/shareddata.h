@@ -93,6 +93,8 @@ namespace dmtcp {
 
     struct Header {
       char                 tmpDir[PATH_MAX];
+      char                 installDir[PATH_MAX];
+
       uint32_t             initialized;
       struct in_addr       localIPAddr;
 
@@ -128,35 +130,34 @@ namespace dmtcp {
       //char                 coordHost[NI_MAXHOST];
     };
 
+    bool initialized();
+
     void initialize(const char *tmpDir,
+                    const char *installDir,
                     DmtcpUniqueProcessId *compId,
                     CoordinatorInfo *coordInfo,
                     struct in_addr *localIP);
     void initializeHeader(const char *tmpDir,
+                          const char *installDir,
                           DmtcpUniqueProcessId *compId,
                           CoordinatorInfo *coordInfo,
                           struct in_addr *localIP);
     void suspended();
     void preCkpt();
     void refill();
-    void updateHostAndPortEnv();
 
-#if 0
-    //string getCoordHost();
-    //void setCoordHost(const char *host);
+    string coordHost();
+    uint32_t coordPort();
+    void getCoordAddr(struct sockaddr *addr, uint32_t *len);
+    uint64_t getCoordTimeStamp();
 
-    uint32_t  getCoordPort();
-    void setCoordPort(uint32_t port);
-#endif
-
+    string getTmpDir();
     char *getTmpDir(char *buf, uint32_t len);
+    string getInstallDir();
     uint32_t getCkptInterval();
-    void setCkptInterval(uint32_t interval);
     void updateGeneration(uint32_t generation);
     DmtcpUniqueProcessId getCompId();
     DmtcpUniqueProcessId getCoordId();
-    uint64_t getCoordTimeStamp();
-    void getCoordAddr(struct sockaddr *addr, uint32_t *len);
 
     void getLocalIPAddr(struct in_addr *in);
 
@@ -183,7 +184,7 @@ namespace dmtcp {
                              socklen_t len);
     void getMissingConMaps(struct MissingConMap **map, uint32_t *nmaps);
 
-    void insertInodeConnIdMaps(vector<SharedData::InodeConnIdMap>& maps);
+    void insertInodeConnIdMaps(vector<InodeConnIdMap>& maps);
     bool getCkptLeaderForFile(dev_t devnum, ino_t inode, void *id);
   }
 }

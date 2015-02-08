@@ -38,10 +38,10 @@
 # include <sys/ptrace.h>
 #endif
 #include <stdarg.h>
-#ifndef __arm__
-# include <asm/ldt.h> // Needed for 'struct user_desc' (arg 6 of __clone)
+#if defined(__arm__) || defined(__aarch64__)
+struct user_desc {int dummy;}; /* <asm/ldt.h> is missing in Ubuntu 14.04 */
 #else
-struct user_desc {int dummy;}; /* <asm/ldt.h> is missing in Ubuntu 11.10 */
+# include <asm/ldt.h> // Needed for 'struct user_desc' (arg 6 of __clone)
 #endif
 #include <stdio.h>
 #include <thread_db.h>
@@ -100,6 +100,7 @@ extern "C"
   MACRO(shmdt)              \
   MACRO(mq_notify)          \
   MACRO(clock_getcpuclockid)\
+  MACRO(timer_create)       \
   MACRO(getppid)            \
   MACRO(tcgetsid)           \
   MACRO(tcgetpgrp)          \
@@ -169,6 +170,9 @@ extern "C"
   int _real_msgctl(int msqid, int cmd, struct msqid_ds *buf);
   int _real_mq_notify(mqd_t mqdes, const struct sigevent *sevp);
   int _real_clock_getcpuclockid(pid_t pid, clockid_t *clock_id);
+  int _real_timer_create(clockid_t clockid,
+                         struct sigevent *sevp,
+                         timer_t *timerid);
 
   pid_t _real_getpid(void);
   pid_t _real_getppid(void);

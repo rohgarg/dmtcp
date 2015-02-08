@@ -37,11 +37,41 @@
 #include <sys/signalfd.h>
 #endif
 
+#ifdef __aarch64__
+// We must support all deprecated syscalls in case the end user code uses it.
+# define __ARCH_WANT_SYSCALL_DEPRECATED
+# define __ARCH_WANT_SYSCALL_NO_AT
+# define __ARCH_WANT_SYSCALL_NO_FLAGS
+// SYS_fork is a deprecated kernel call in aarch64; in favor of SYS_clone?
+# include <asm-generic/unistd.h>
+// SYS_fork undefined in aarch64, but add extra insurance
+# undef SYS_fork
+# undef SYS_open
+# undef SYS_pipe
+# undef SYS_poll
+# define SYS_fork __NR_fork
+# define SYS_open __NR_open
+# define SYS_pipe __NR_pipe
+# define SYS_poll __NR_poll
+// These kernel calls are not deprecated.  But SYS_XXX is not defined for them.
+# define SYS_epoll_create __NR_epoll_create
+# define SYS_inotify_init __NR_inotify_init
+# define SYS_signalfd __NR_signalfd
+# define SYS_eventfd __NR_eventfd
+#endif
+
+using namespace dmtcp;
+
 EXTERNC int dmtcp_is_popen_fp(FILE *fp) __attribute((weak));
 
 extern "C" void exit ( int status )
 {
-  dmtcp::DmtcpWorker::setExitInProgress();
+  /*
+   * NOTE: This sets the _exitInProgress flag to true which results in
+   *       a call to tgkill(SIGUSR2) for the ckpt thread.
+   *       Refer to the comment in: DmtcpWorker::~DmtcpWorker()
+   */
+  DmtcpWorker::setExitInProgress();
   _real_exit ( status );
   for (;;); // Without this, gcc emits warning:  `noreturn' fnc does return
 }
@@ -115,14 +145,14 @@ extern "C" int pipe2 ( int fds[2], int flags )
 
 // extern "C" pid_t getpid()
 // {
-//   return dmtcp::ProcessInfo::instance().pid();
+//   return ProcessInfo::instance().pid();
 // }
 
 // extern "C" pid_t getppid()
 // {
 //   pid_t ppid = _real_getppid();
 //   if (ppid == 1 ) {
-//     dmtcp::ProcessInfo::instance().setppid( 1 );
+//     ProcessInfo::instance().setppid( 1 );
 //   }
 //
 //   return origPpid;
@@ -131,7 +161,7 @@ extern "C" int pipe2 ( int fds[2], int flags )
 // extern "C" pid_t setsid(void)
 // {
 //   pid_t pid = _real_setsid();
-//   dmtcp::ProcessInfo::instance().setsid(origPid);
+//   ProcessInfo::instance().setsid(origPid);
 //   return origPid;
 // }
 
@@ -167,7 +197,7 @@ pid_t wait4(pid_t pid, __WAIT_STATUS status, int options, struct rusage *rusage)
 
   if (retval > 0 &&
       (WIFEXITED(*(int*)status) || WIFSIGNALED(*(int*)status))) {
-    dmtcp::ProcessInfo::instance().eraseChild(retval);
+    ProcessInfo::instance().eraseChild(retval);
   }
   errno = saved_errno;
   return retval;
@@ -182,7 +212,7 @@ extern "C" int waitid(idtype_t idtype, id_t id, siginfo_t *infop, int options)
 
   if (retval != -1) {
     if ( siginfop.si_code == CLD_EXITED || siginfop.si_code == CLD_KILLED )
-      dmtcp::ProcessInfo::instance().eraseChild ( siginfop.si_pid );
+      ProcessInfo::instance().eraseChild ( siginfop.si_pid );
   }
 
   if (retval == 0 && infop != NULL) {

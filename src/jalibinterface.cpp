@@ -25,14 +25,16 @@
 #include "syscallwrappers.h"
 #include "../jalib/jalib.h"
 
+using namespace dmtcp;
+
 extern "C" void initializeJalib()
 {
   jalib::JalibFuncPtrs jalibFuncPtrs;
 
 #define INIT_JALIB_FPTR(name) jalibFuncPtrs.name = _real_ ## name;
 
-  jalibFuncPtrs.writeAll = dmtcp::Util::writeAll;
-  jalibFuncPtrs.readAll = dmtcp::Util::readAll;
+  jalibFuncPtrs.writeAll = Util::writeAll;
+  jalibFuncPtrs.readAll = Util::readAll;
 
   INIT_JALIB_FPTR(open);
   INIT_JALIB_FPTR(fopen);
@@ -61,6 +63,9 @@ extern "C" void initializeJalib()
   INIT_JALIB_FPTR(pthread_mutex_trylock);
   INIT_JALIB_FPTR(pthread_mutex_unlock);
 
-  jalib_init(jalibFuncPtrs, PROTECTED_STDERR_FD, PROTECTED_JASSERTLOG_FD,
+  jalib_init(jalibFuncPtrs,
+             ELF_INTERPRETER,
+             PROTECTED_STDERR_FD,
+             PROTECTED_JASSERTLOG_FD,
              DMTCP_FAIL_RC);
 }

@@ -41,7 +41,6 @@ namespace dmtcp
     DMT_REJECT_NOT_RESTARTING,
     DMT_REJECT_WRONG_COMP,
     DMT_REJECT_NOT_RUNNING,
-    DMT_REJECT_WRONG_PREFIX,
 
     DMT_UPDATE_PROCESS_INFO_AFTER_FORK,
     DMT_UPDATE_PROCESS_INFO_AFTER_EXEC,
@@ -87,7 +86,7 @@ namespace dmtcp
     };
   }
 
-  dmtcp::ostream& operator << ( dmtcp::ostream& o, const DmtcpMessageType& s );
+  ostream& operator << (ostream& o, const DmtcpMessageType& s);
 
   class WorkerState
   {
@@ -115,8 +114,8 @@ namespace dmtcp
       };
       WorkerState ( eWorkerState s = UNKNOWN ) : _state ( s ) {}
 
-      static void setCurrentState ( const dmtcp::WorkerState& theValue );
-      static dmtcp::WorkerState currentState();
+      static void setCurrentState ( const WorkerState& theValue );
+      static WorkerState currentState();
 
       eWorkerState value() const;
 

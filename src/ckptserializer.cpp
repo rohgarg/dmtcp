@@ -22,6 +22,16 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/syscall.h>
+#ifdef __aarch64__
+/* On aarch64, fork() is not implemented, in favor of clone().
+ *   A true fork call would include CLONE_CHILD_SETTID and set the thread id
+ * in the thread area of the child (using set_thread_area).  We don't do that.
+ */
+# define _real_sys_fork() _real_syscall(SYS_clone, \
+    CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLD, NULL, NULL, NULL)
+#else
+# define _real_sys_fork() _real_syscall(SYS_fork)
+#endif
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -32,7 +42,12 @@
 #include "protectedfds.h"
 #include "ckptserializer.h"
 
-#define _real_pipe(a) _real_syscall(SYS_pipe, a)
+// aarch64 doesn't define SYS_pipe kernel call by default.
+#if defined(__aarch64__)
+# define _real_pipe(a) _real_syscall(SYS_pipe2, a, 0)
+#else
+# define _real_pipe(a) _real_syscall(SYS_pipe, a)
+#endif
 #define _real_waitpid(a,b,c) _real_syscall(SYS_wait4,a,b,c,NULL)
 
 using namespace dmtcp;
@@ -291,7 +306,7 @@ static int test_and_prepare_for_forked_ckpt()
    */
   prepare_sigchld_handler();
 
-  pid_t forked_cpid = _real_syscall(SYS_fork);
+  pid_t forked_cpid = _real_sys_fork();
   if (forked_cpid == -1) {
     JWARNING(false)
       .Text("Failed to do forked checkpointing, trying normal checkpoint");
@@ -301,7 +316,7 @@ static int test_and_prepare_for_forked_ckpt()
     JTRACE("checkpoint complete\n");
     return FORKED_CKPT_PARENT;
   } else {
-    pid_t grandchild_pid = _real_syscall(SYS_fork);
+    pid_t grandchild_pid = _real_sys_fork();
     JWARNING(grandchild_pid != -1)
       .Text("WARNING: Forked checkpoint failed, no checkpoint available");
     if (grandchild_pid > 0) {
@@ -320,7 +335,7 @@ open_ckpt_to_write(int fd, int pipe_fds[2], char **extcomp_args)
 {
   pid_t cpid;
 
-  cpid = _real_syscall(SYS_fork);
+  cpid = _real_sys_fork();
   if (cpid == -1) {
     JWARNING(false) (extcomp_args[0]) (JASSERT_ERRNO)
       .Text("WARNING: error forking child process. Compression won't be used");
@@ -489,7 +504,7 @@ static int open_ckpt_to_read(const char *filename)
 }
 
 // See comments above for open_ckpt_to_read()
-int dmtcp::CkptSerializer::openCkptFileToRead(const dmtcp::string& path)
+int CkptSerializer::openCkptFileToRead(const string& path)
 {
   char buf[1024];
   int fd = open_ckpt_to_read(path.c_str());
@@ -507,7 +522,7 @@ int dmtcp::CkptSerializer::openCkptFileToRead(const dmtcp::string& path)
   return fd;
 }
 
-void dmtcp::CkptSerializer::createCkptDir()
+void CkptSerializer::createCkptDir()
 {
   string ckptDir = ProcessInfo::instance().getCkptDir();
   JASSERT(!ckptDir.empty());
@@ -520,7 +535,7 @@ void dmtcp::CkptSerializer::createCkptDir()
 }
 
 // See comments above for open_ckpt_to_read()
-void dmtcp::CkptSerializer::writeCkptImage(void *mtcpHdr, size_t mtcpHdrLen)
+void CkptSerializer::writeCkptImage(void *mtcpHdr, size_t mtcpHdrLen)
 
 {
   string ckptFilename = ProcessInfo::instance().getCkptFilename();
@@ -584,13 +599,13 @@ void dmtcp::CkptSerializer::writeCkptImage(void *mtcpHdr, size_t mtcpHdrLen)
   JTRACE("checkpoint complete");
 }
 
-void dmtcp::CkptSerializer::writeDmtcpHeader(int fd)
+void CkptSerializer::writeDmtcpHeader(int fd)
 {
   const ssize_t len = strlen(DMTCP_FILE_HEADER);
   JASSERT(write(fd, DMTCP_FILE_HEADER, len) == len);
 
   jalib::JBinarySerializeWriterRaw wr("", fd);
-  dmtcp::ProcessInfo::instance().serialize(wr);
+  ProcessInfo::instance().serialize(wr);
   ssize_t written = len + wr.bytes();
 
   // We must write in multiple of PAGE_SIZE
@@ -600,8 +615,7 @@ void dmtcp::CkptSerializer::writeDmtcpHeader(int fd)
   JASSERT(Util::writeAll(fd, buf, remaining) == remaining);
 }
 
-int dmtcp::CkptSerializer::readCkptHeader(const dmtcp::string& path,
-                                          dmtcp::ProcessInfo *pInfo)
+int CkptSerializer::readCkptHeader(const string& path, ProcessInfo *pInfo)
 {
   int fd = openCkptFileToRead(path);
   const size_t len = strlen(DMTCP_FILE_HEADER);

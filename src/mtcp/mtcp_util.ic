@@ -175,7 +175,16 @@ int mtcp_strendswith (const char *s1, const char *s2)
   return mtcp_strncmp(s1, s2, len2) == 0;
 }
 
-void mtcp_sys_memcpy (void *dstpp, const void *srcpp, size_t len)
+void *mtcp_memset(void *s, int c, size_t n)
+{
+  char *p = s;
+  while (n-- > 0) {
+    *p++ = (char)c;
+  }
+  return s;
+}
+
+void *mtcp_memcpy(void *dstpp, const void *srcpp, size_t len)
 {
   char *dst = (char*) dstpp;
   const char *src = (const char*) srcpp;
@@ -183,6 +192,7 @@ void mtcp_sys_memcpy (void *dstpp, const void *srcpp, size_t len)
     *dst++ = *src++;
     len--;
   }
+  return dstpp;
 }
 
 ssize_t mtcp_read_all(int fd, void *buf, size_t count)
@@ -207,6 +217,32 @@ ssize_t mtcp_read_all(int fd, void *buf, size_t count)
   return num_read;
 }
 
+void mtcp_mkdir(const char *dir)
+{
+  int mtcp_sys_errno;
+  char tmp[PATH_MAX];
+  size_t i;
+  size_t len = mtcp_strlen(dir);
+  MTCP_ASSERT(len < PATH_MAX);
+
+  mtcp_memset(tmp, 0, sizeof(tmp));
+  mtcp_strcpy(tmp, dir);
+
+  while (tmp[len - 1] == '/') {
+    tmp[len - 1] = 0;
+    len--;
+  }
+
+  for(i = 1; i < len; i++) {
+    if(tmp[i] == '/') {
+      tmp[i] = '\0';
+      mtcp_sys_mkdir(tmp, S_IRWXU);
+      tmp[i] = '/';
+    }
+  }
+  mtcp_sys_mkdir(tmp, S_IRWXU);
+}
+
 void mtcp_readfile(int fd, void *buf, size_t size)
 {
   int mtcp_sys_errno;
@@ -214,7 +250,7 @@ void mtcp_readfile(int fd, void *buf, size_t size)
   size_t ar = 0;
   int tries = 0;
 
-#if __arm__
+#if __arm__ || __aarch64__
   /* ARM requires DMB instruction to ensure that any store to memory
    * by a prior kernel mmap call has completed.
    * SEE ARM Information Center article:
@@ -240,7 +276,7 @@ void mtcp_readfile(int fd, void *buf, size_t size)
     }
     ar += rc;
   }
-#if __arm__
+#if __arm__ || __aarch64__
   /* ARM requires DSB and ISB instructions to ensure that prior read
    * instructions complete, and prevent instructions being fetched prior to this.
    * SEE ARM Information Center article:

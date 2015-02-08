@@ -29,7 +29,9 @@
 #include  "../jalib/jassert.h"
 #include  "../jalib/jfilesystem.h"
 
-void dmtcp::Util::lockFile(int fd)
+using namespace dmtcp;
+
+void Util::lockFile(int fd)
 {
   struct flock fl;
 
@@ -47,18 +49,18 @@ void dmtcp::Util::lockFile(int fd)
 
   JASSERT (result != -1) (JASSERT_ERRNO)
     .Text("Unable to lock the PID MAP file");
-#if __arm__
+#if (__arm__ || __aarch64__)
   WMB;  // DMB, ensure writes by others to memory have completed before we
         //      we enter protected region.
 #endif
 }
 
-void dmtcp::Util::unlockFile(int fd)
+void Util::unlockFile(int fd)
 {
   struct flock fl;
   int result;
 
-#if __arm__
+#if (__arm__ || __aarch64__)
   RMB; WMB; // DMB, ensure accesses to protected memory have completed
             //      before releasing lock
 #endif
@@ -67,7 +69,7 @@ void dmtcp::Util::unlockFile(int fd)
   fl.l_start  = 0;        // Offset from l_whence
   fl.l_len    = 0;        // length, 0 = to EOF
 
-#if __arm__
+#if (__arm__ || __aarch64__)
   WMB;  // DSB, ensure update of fl before seen by other CPUs
 #endif
 
@@ -77,7 +79,7 @@ void dmtcp::Util::unlockFile(int fd)
     .Text("Unlock Failed");
 }
 
-bool dmtcp::Util::strStartsWith(const char *str, const char *pattern)
+bool Util::strStartsWith(const char *str, const char *pattern)
 {
   if (str == NULL || pattern == NULL) {
     return false;
@@ -90,7 +92,7 @@ bool dmtcp::Util::strStartsWith(const char *str, const char *pattern)
   return false;
 }
 
-bool dmtcp::Util::strEndsWith(const char *str, const char *pattern)
+bool Util::strEndsWith(const char *str, const char *pattern)
 {
   if (str == NULL || pattern == NULL) {
     return false;
@@ -104,18 +106,93 @@ bool dmtcp::Util::strEndsWith(const char *str, const char *pattern)
   return false;
 }
 
-bool dmtcp::Util::strStartsWith(const dmtcp::string& str, const char *pattern)
+bool Util::strStartsWith(const string& str, const char *pattern)
 {
   return strStartsWith(str.c_str(), pattern);
 }
 
-bool dmtcp::Util::strEndsWith(const dmtcp::string& str, const char *pattern)
+bool Util::strEndsWith(const string& str, const char *pattern)
 {
   return strEndsWith(str.c_str(), pattern);
 }
 
+string Util::joinStrings(vector<string> v, const string& delim)
+{
+  string result;
+  if (v.size() > 0) {
+    result = v[0];
+    for (size_t i = 1; i < v.size(); i++) {
+      result += delim + v[i];
+    }
+  }
+  return result;
+}
+
+// Tokenizes the string using the delimiters.
+// Empty tokens will not be included in the result.
+vector<string> Util::tokenizeString(const string& s, const string& delims)
+{
+  size_t offset = 0;
+  vector<string> tokens;
+
+  while (true) {
+    size_t i = s.find_first_not_of(delims, offset);
+    if (i == string::npos) {
+      break;
+    }
+
+    size_t j = s.find_first_of(delims, i);
+    if (j == string::npos) {
+      tokens.push_back(s.substr(i));
+      offset = s.length();
+      continue;
+    }
+
+    tokens.push_back(s.substr(i, j - i));
+    offset = j;
+  }
+  return tokens;
+}
+
+// Add it back if needed.
+#if 0
+// Splits the string using the provided delimiters.
+// The string is split each time at the first character
+// that matches any of the characters specified in delims.
+// Empty tokens are allowed in the result.
+// Optionally, maximum number of tokens to be returned
+// can be specified.
+inline vector<string> split(
+    const string& s,
+    const string& delims,
+    const Option<unsigned int>& n = None())
+{
+  vector<string> tokens;
+  size_t offset = 0;
+  size_t next = 0;
+
+  while (n.isNone() || n.get() > 0) {
+    next = s.find_first_of(delims, offset);
+    if (next == string::npos) {
+      tokens.push_back(s.substr(offset));
+      break;
+    }
+
+    tokens.push_back(s.substr(offset, next - offset));
+    offset = next + 1;
+
+    // Finish splitting if we've found enough tokens.
+    if (n.isSome() && tokens.size() == n.get() - 1) {
+      tokens.push_back(s.substr(offset));
+      break;
+    }
+  }
+  return tokens;
+}
+#endif
+
 // Fails or does entire write (returns count)
-ssize_t dmtcp::Util::writeAll(int fd, const void *buf, size_t count)
+ssize_t Util::writeAll(int fd, const void *buf, size_t count)
 {
   const char *ptr = (const char *) buf;
   size_t num_written = 0;
@@ -141,7 +218,7 @@ ssize_t dmtcp::Util::writeAll(int fd, const void *buf, size_t count)
 // return value:
 //    -1: unrecoverable error
 //   <n>: number of bytes read
-ssize_t dmtcp::Util::readAll(int fd, void *buf, size_t count)
+ssize_t Util::readAll(int fd, void *buf, size_t count)
 {
   ssize_t rc;
   char *ptr = (char *) buf;
@@ -162,13 +239,13 @@ ssize_t dmtcp::Util::readAll(int fd, void *buf, size_t count)
   return num_read;
 }
 
-ssize_t dmtcp::Util::skipBytes(int fd, size_t count)
+ssize_t Util::skipBytes(int fd, size_t count)
 {
   char buf[1024];
   ssize_t rc;
   ssize_t totalSkipped = 0;
   while (count > 0) {
-    rc = dmtcp::Util::readAll(fd, buf, MIN(count, sizeof(buf)));
+    rc = Util::readAll(fd, buf, MIN(count, sizeof(buf)));
 
     if (rc == -1) {
       break;
@@ -179,7 +256,7 @@ ssize_t dmtcp::Util::skipBytes(int fd, size_t count)
   return totalSkipped;
 }
 
-void dmtcp::Util::changeFd(int oldfd, int newfd)
+void Util::changeFd(int oldfd, int newfd)
 {
   if (oldfd != newfd) {
     JASSERT(_real_dup2(oldfd, newfd) == newfd);
@@ -187,7 +264,7 @@ void dmtcp::Util::changeFd(int oldfd, int newfd)
   }
 }
 
-void dmtcp::Util::dupFds(int oldfd, const dmtcp::vector<int>& newfds)
+void Util::dupFds(int oldfd, const vector<int>& newfds)
 {
   changeFd(oldfd, newfds[0]);
   for (size_t i = 1; i < newfds.size(); i++) {
@@ -200,7 +277,7 @@ void dmtcp::Util::dupFds(int oldfd, const dmtcp::vector<int>& newfds)
 // Reads from fd until count bytes are read, or newline encountered.
 // Returns NULL at EOF.
 // FIXME: count is unused. Buffer-overrun possible
-int dmtcp::Util::readLine(int fd, char *buf, int count)
+int Util::readLine(int fd, char *buf, int count)
 {
   int i = 0;
   char c;
@@ -218,7 +295,7 @@ int dmtcp::Util::readLine(int fd, char *buf, int count)
 
 /* Read decimal number, return value and terminating character */
 
-char dmtcp::Util::readDec (int fd, VA *value)
+char Util::readDec (int fd, VA *value)
 {
   char c;
   unsigned long int v;
@@ -236,7 +313,7 @@ char dmtcp::Util::readDec (int fd, VA *value)
 
 /* Read decimal number, return value and terminating character */
 
-char dmtcp::Util::readHex (int fd, VA *value)
+char Util::readHex (int fd, VA *value)
 {
   char c;
   unsigned long int v;
@@ -256,7 +333,7 @@ char dmtcp::Util::readHex (int fd, VA *value)
 
 /* Read non-null character, return null if EOF */
 
-char dmtcp::Util::readChar (int fd)
+char Util::readChar (int fd)
 {
   char c;
   int rc;
@@ -269,7 +346,7 @@ char dmtcp::Util::readChar (int fd)
 }
 
 
-int dmtcp::Util::readProcMapsLine(int mapsfd, ProcMapsArea *area)
+int Util::readProcMapsLine(int mapsfd, ProcMapsArea *area)
 {
   char c, rflag, sflag, wflag, xflag;
   int i;
@@ -343,7 +420,7 @@ skipeol:
   return (0);  /* NOTREACHED : stop compiler warning */
 }
 
-int dmtcp::Util::memProtToOpenFlags(int prot)
+int Util::memProtToOpenFlags(int prot)
 {
   if (prot & (PROT_READ | PROT_WRITE)) return O_RDWR;
   if (prot & PROT_READ) return O_RDONLY;
@@ -352,7 +429,7 @@ int dmtcp::Util::memProtToOpenFlags(int prot)
 }
 
 #define TRACER_PID_STR "TracerPid:"
-pid_t dmtcp::Util::getTracerPid(pid_t tid)
+pid_t Util::getTracerPid(pid_t tid)
 {
   if (!dmtcp_real_to_virtual_pid) {
     return 0;
@@ -383,23 +460,23 @@ pid_t dmtcp::Util::getTracerPid(pid_t tid)
   return tracerPid == 0 ? tracerPid : dmtcp_real_to_virtual_pid(tracerPid);
 }
 
-bool dmtcp::Util::isPtraced()
+bool Util::isPtraced()
 {
   return getTracerPid() != 0;
 }
 
-bool dmtcp::Util::isValidFd(int fd)
+bool Util::isValidFd(int fd)
 {
   return _real_fcntl(fd, F_GETFL, 0) != -1;
 }
 
-size_t dmtcp::Util::pageSize()
+size_t Util::pageSize()
 {
   static size_t page_size = sysconf(_SC_PAGESIZE);
   return page_size;
 }
 
-size_t dmtcp::Util::pageMask()
+size_t Util::pageMask()
 {
   static size_t page_mask = ~(pageSize() - 1);
   return page_mask;
@@ -411,7 +488,7 @@ size_t dmtcp::Util::pageMask()
  * TODO: One can use /proc/self/pagemap to detect if the page is backed by a
  * shared zero page.
  */
-bool dmtcp::Util::areZeroPages(void *addr, size_t numPages)
+bool Util::areZeroPages(void *addr, size_t numPages)
 {
   static size_t page_size = pageSize();
   long long *buf = (long long*) addr;
@@ -429,7 +506,7 @@ bool dmtcp::Util::areZeroPages(void *addr, size_t numPages)
 }
 
 /* Caller must allocate exec_path of size at least MTCP_MAX_PATH */
-char *dmtcp::Util::findExecutable(char *executable, const char* path_env,
+char *Util::findExecutable(char *executable, const char* path_env,
                                   char *exec_path)
 {
   char *path;
@@ -454,7 +531,7 @@ char *dmtcp::Util::findExecutable(char *executable, const char* path_env,
     *path++ = '\0';
     strncat(exec_path, executable, PATH_MAX - len - 1);
     if (access(exec_path, X_OK) == 0){
-      // Artem: Additionally check that this is regular file. 
+      // Artem: Additionally check that this is regular file.
       // From access point of view directories are executables too :)
       // I ran into problem on the system where user home dir was in the PATH
       // and I create a directory named "hbict" in it.

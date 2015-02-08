@@ -33,6 +33,7 @@
 #include "jfilesystem.h"
 #include "rm_main.h"
 #include "rm_utils.h"
+#include "rm_pmi.h"
 
 #define PMI_SUCCESS                  0
 #define PMI_FAIL                    -1
@@ -50,6 +51,8 @@
 #define PMI_ERR_INVALID_KEYVALP     12
 #define PMI_ERR_INVALID_SIZE        13
 #define PMI_ERR_INVALID_KVS         14
+
+using namespace dmtcp;
 
 static pthread_mutex_t _lock_lib, _lock_flag;
 static void do_lock_lib() {
@@ -80,14 +83,19 @@ static _PMI_Barrier_t _real_PMI_Barrier = NULL;
 static _PMI_Initialized_t _real_PMI_Initialized = NULL;
 
 static bool pmi_is_used = false;
-static bool pmi_is_internal = false;
+static bool explicit_srun = false;
+
+static bool want_pmi_shutdown()
+{
+    return pmi_is_used && (_get_rmgr_type() == slurm && !explicit_srun );
+}
 
 void rm_init_pmi(){
 
     do_lock_lib();
     if( !handle ){
-      dmtcp::string pattern = "libpmi";
-      dmtcp::string libpath;
+      string pattern = "libpmi";
+      string libpath;
       if( findLib_byname(pattern,libpath) != 0 ){
         JASSERT( findLib_byfunc("PMI_Init",libpath) == 0);
       }
@@ -104,9 +112,11 @@ void rm_init_pmi(){
       if( _real_PMI_Initialized == NULL ){
         // eventually smpd of MPICH2 and Intel-MPI uses iPMI_Initialized function
         _real_PMI_Initialized = (_PMI_Initialized_t)dlsym(handle,"iPMI_Initialized");
-        pmi_is_internal = true;
       }
       JASSERT( _real_PMI_Initialized != NULL );
+      if (getenv( ENV_VAR_EXPLICIT_SRUN ) != NULL) {
+        explicit_srun = true;
+      }
     }
     do_unlock_lib();
     JTRACE("")(handle);
@@ -133,7 +143,7 @@ int rm_shutdown_pmi()
   int ret = 0;
 
   JTRACE("Start, internal pmi capable");
-  if( pmi_is_used && !pmi_is_internal ){
+  if( want_pmi_shutdown() ){
     JTRACE("Perform shutdown");
 
     PMI_BOOL en;
@@ -155,7 +165,7 @@ int rm_restore_pmi()
   int ret = 0;
 
   JTRACE("Start, internal pmi capable");
-  if( pmi_is_used && !pmi_is_internal ){
+  if( want_pmi_shutdown()  ){
     JTRACE("Perform restore");
     if( !_real_PMI_Init || ! _real_PMI_Initialized ){
       rm_init_pmi();

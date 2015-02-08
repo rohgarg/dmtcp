@@ -34,15 +34,7 @@
 
 using namespace dmtcp;
 
-static string *utilTmpDirPtr = NULL;
-static string &utilTmpDir(){
-  if( utilTmpDirPtr == NULL ){
-    utilTmpDirPtr = new dmtcp::string;
-  }
-  return *utilTmpDirPtr;
-}
-
-void dmtcp::Util::writeCoordPortToFile(const char *port, const char *portFile)
+void Util::writeCoordPortToFile(const char *port, const char *portFile)
 {
   if (port != NULL && portFile != NULL && strlen(portFile) > 0) {
     int fd = open(portFile, O_CREAT|O_WRONLY|O_TRUNC, 0600);
@@ -54,40 +46,30 @@ void dmtcp::Util::writeCoordPortToFile(const char *port, const char *portFile)
   }
 }
 
-dmtcp::string &dmtcp::Util::getTmpDir()
-{
-  if( utilTmpDir().length() == 0 ){
-    setTmpDir(getenv(ENV_VAR_TMPDIR));
-  }
-  JASSERT(utilTmpDir().length() > 0);
-  return utilTmpDir();
-}
-
 /*
- * setTmpDir() computes the TmpDir to be used by DMTCP. It does so by using
+ * calcTmpDir() computes the TmpDir to be used by DMTCP. It does so by using
  * DMTCP_TMPDIR env, current username, and hostname. Once computed, we open the
- * directory on file descriptor PROTECTED_TMPDIR_FD. The getTmpDir() routine
- * finds the TmpDir from looking at PROTECTED_TMPDIR_FD in proc file system.
+ * directory on file descriptor PROTECTED_TMPDIR_FD.
  *
  * This mechanism was introduced to avoid calls to gethostname(), getpwuid()
  * etc. while DmtcpWorker was still initializing (in constructor) or the
  * process was restarting. gethostname(), getpwuid() will create a socket
  * connect to some DNS server to find out hostname and username. The socket is
  * closed only at next exec() and thus it leaves a dangling socket in the
- * worker process. To resolve this issue, we make sure to call setTmpDir() only
+ * worker process. To resolve this issue, we make sure to call calcTmpDir() only
  * from dmtcp_launch and dmtcp_restart process and once the user process
- * has been exec()ed, we use getTmpDir() only.
+ * has been exec()ed, we use SharedData::getTmpDir() only.
  */
-void dmtcp::Util::setTmpDir(const char *tmpdirenv)
+string Util::calcTmpDir(const char *tmpdirenv)
 {
-  dmtcp::string tmpDir;
+  string tmpDir;
   char hostname[256];
   memset(hostname, 0, sizeof(hostname));
 
   JASSERT ( gethostname(hostname, sizeof(hostname)) == 0 ||
 	    errno == ENAMETOOLONG ).Text ( "gethostname() failed" );
 
-  dmtcp::ostringstream o;
+  ostringstream o;
 
   char *userName = const_cast<char *>("");
   if ( getpwuid ( getuid() ) != NULL ) {
@@ -103,27 +85,28 @@ void dmtcp::Util::setTmpDir(const char *tmpdirenv)
   } else {
     o << "/tmp/dmtcp-" << userName << "@" << hostname;
   }
-  utilTmpDir() = o.str();
+  tmpDir = o.str();
 
 
-  JASSERT(mkdir(utilTmpDir().c_str(), S_IRWXU) == 0 || errno == EEXIST)
-          (JASSERT_ERRNO) (utilTmpDir())
+  JASSERT(mkdir(tmpDir.c_str(), S_IRWXU) == 0 || errno == EEXIST)
+          (JASSERT_ERRNO) (tmpDir)
     .Text("Error creating tmp directory");
 
-  JASSERT(0 == access(utilTmpDir().c_str(), X_OK|W_OK)) (utilTmpDir())
+  JASSERT(0 == access(tmpDir.c_str(), X_OK|W_OK)) (tmpDir)
     .Text("ERROR: Missing execute- or write-access to tmp dir");
+
+  return tmpDir;
 }
 
-void dmtcp::Util::initializeLogFile(dmtcp::string procname, dmtcp::string prevLogPath)
+void Util::initializeLogFile(string tmpDir, string procname, string prevLogPath)
 {
-
-  dmtcp::UniquePid::ThisProcess(true);
+  UniquePid::ThisProcess(true);
 #ifdef DEBUG
   // Initialize JASSERT library here
-  dmtcp::ostringstream o;
-  o << getTmpDir();
+  ostringstream o;
+  o << tmpDir;
   o << "/jassertlog.";
-  o << dmtcp::UniquePid::ThisProcess();
+  o << UniquePid::ThisProcess();
   o << "_";
   if (procname.empty()) {
     o << jalib::Filesystem::GetProgramName();
@@ -133,19 +116,19 @@ void dmtcp::Util::initializeLogFile(dmtcp::string procname, dmtcp::string prevLo
 
   JASSERT_SET_LOG(o.str());
 
-  dmtcp::ostringstream a;
+  ostringstream a;
   a << "\n========================================";
   a << "\nProcess Information";
   a << "\n========================================";
-  a << "\nThis Process: " << dmtcp::UniquePid::ThisProcess()
-    << "\nParent Process: " << dmtcp::UniquePid::ParentProcess();
+  a << "\nThis Process: " << UniquePid::ThisProcess()
+    << "\nParent Process: " << UniquePid::ParentProcess();
 
   if (!prevLogPath.empty()) {
     a << "\nPrev JAssertLog path: " << prevLogPath;
   }
 
   a << "\nArgv: ";
-  dmtcp::vector<dmtcp::string> args = jalib::Filesystem::GetProgramArgs();
+  vector<string> args = jalib::Filesystem::GetProgramArgs();
   size_t i;
   for (i = 0; i < args.size(); i++) {
     a << " " << args[i];
@@ -164,5 +147,8 @@ void dmtcp::Util::initializeLogFile(dmtcp::string procname, dmtcp::string prevLo
   } else {
     jassert_quiet = 0;
   }
+#ifdef QUIET
+  jassert_quiet = 2;
+#endif
   unsetenv(ENV_VAR_STDERR_PATH);
 }

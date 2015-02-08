@@ -58,9 +58,8 @@
 #include "constants.h"
 #include "dmtcp.h"
 #include "mtcp/ldt.h"
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
+#include "config.h"
+
 #ifdef HAVE_SYS_EPOLL_H
 # include <sys/epoll.h>
 #else
@@ -82,7 +81,7 @@ extern "C"
 {
 #endif
 
-#ifdef __arm__
+#if defined(__arm__) || defined(__aarch64__)
 # define DISABLE_PTHREAD_GETSPECIFIC_TRICK
 #endif
 

@@ -22,11 +22,10 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
-#include "linux/version.h"
+#include <linux/version.h>
 #include <features.h>
+
+#include "config.h"
 
 // Turn on coordinator NameService by default. In future, we will replace the
 // logic in dmtcp_coordinator.cpp and dmtcp_worker.cpp to allow the coordinator
@@ -37,9 +36,6 @@
 // coordinator before it can do a query.
 #define COORD_NAMESERVICE
 
-#define FALSE 0
-#define TRUE 1
-
 #ifndef CKPT_SIGNAL
 # define CKPT_SIGNAL SIGUSR2
 #endif
@@ -47,9 +43,7 @@
 // This macro (LIBC...) is also defined in ../jalib/jassert.cpp and should
 // always be kept in sync with that.
 #define LIBC_FILENAME "libc.so.6"
-#define LIBPTHREAD_FILENAME "libpthread.so.0"
 
-#define MTCP_FILENAME "libmtcp.so.1"
 #define LIBDL_FILENAME "libdl.so.2"
 #define CKPT_FILE_PREFIX "ckpt_"
 #define CKPT_FILE_SUFFIX ".dmtcp"
@@ -90,15 +84,14 @@
 #define ENV_VAR_CKPT_OPEN_FILES "DMTCP_CKPT_OPEN_FILES"
 #define ENV_VAR_PLUGIN "DMTCP_PLUGIN"
 #define ENV_VAR_QUIET "DMTCP_QUIET"
-#define ENV_VAR_PREFIX_ID "DMTCP_PREFIX_ID"
-#define ENV_VAR_PREFIX_PATH "DMTCP_PREFIX_PATH"
 #define ENV_VAR_DMTCP_DUMMY "DMTCP_DUMMY"
 // Keep in sync with plugin/pid/pidwrappers.h
 #define ENV_VAR_VIRTUAL_PID "DMTCP_VIRTUAL_PID"
+// Keep in sync with plugin/batch-queue/rm_pmi.h
+#define ENV_VAR_EXPLICIT_SRUN "DMTCP_EXPLICIT_SRUN"
 
 
 // it is not yet safe to change these; these names are hard-wired in the code
-#define ENV_VAR_UTILITY_DIR "JALIB_UTILITY_DIR"
 #define ENV_VAR_STDERR_PATH "JALIB_STDERR_PATH"
 #define ENV_VAR_COMPRESSION "DMTCP_GZIP"
 #define ENV_VAR_ALLOC_PLUGIN "DMTCP_ALLOC_PLUGIN"
@@ -135,14 +128,11 @@
     ENV_VAR_TMPDIR,\
     ENV_VAR_CKPT_OPEN_FILES,\
     ENV_VAR_QUIET,\
-    ENV_VAR_UTILITY_DIR,\
     ENV_VAR_STDERR_PATH,\
     ENV_VAR_COMPRESSION,\
     ENV_VAR_ALLOC_PLUGIN,\
     ENV_VAR_DL_PLUGIN,\
     ENV_VAR_SIGCKPT,\
-    ENV_VAR_PREFIX_ID,\
-    ENV_VAR_PREFIX_PATH,\
     ENV_VAR_SCREENDIR, \
     ENV_VAR_DLSYM_OFFSET, \
     ENV_VAR_DLSYM_OFFSET_M32, \
